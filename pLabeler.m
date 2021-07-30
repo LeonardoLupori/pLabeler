@@ -2,6 +2,8 @@ classdef pLabeler < handle
     
     properties
         gHandles      % Struct with handles of GUI's graphic objects
+        defPath = 'C:\';
+        
     end
     
     methods
@@ -27,10 +29,8 @@ classdef pLabeler < handle
         function buildApp(app)
             % Create all the graphics elements in the 2 figures
             app.gHandles = graphics.createFigures();
-            
             % Assign callbacks to all the buttons in the GUI
             functionality.assignCallbacks(app)
-            
             % Add custom CloseRequestFcn to all the figures
             app.gHandles.fig_image.CloseRequestFcn = @app.closeFunction;
             app.gHandles.fig_pLabeler.CloseRequestFcn = @app.closeFunction;
