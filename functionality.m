@@ -61,24 +61,24 @@ classdef functionality
             if bool
                 app.defPath = projectFolder;
             end
-        
+            
         end
-                    
-            %------------------------------------------------------------------
-            % ADDITIONAL FUNCTIONS
-            %------------------------------------------------------------------
-            
-            function writeToLog(logHandle, string)
-                if isempty(logHandle.Value)
-                    logHandle.Value = string;
-                else
-                    newValue = cat(1, logHandle.Value, string);
-                    logHandle.Value = newValue;
-                end
-                scroll(logHandle, 'bottom')
+        
+        %------------------------------------------------------------------
+        % ADDITIONAL FUNCTIONS
+        %------------------------------------------------------------------
+        
+        function writeToLog(logHandle, string)
+            if isempty(logHandle.Value)
+                logHandle.Value = string;
+            else
+                newValue = cat(1, logHandle.Value, string);
+                logHandle.Value = newValue;
             end
-            
-            
+            scroll(logHandle, 'bottom')
+        end
+        
+        
         
     end
 end
