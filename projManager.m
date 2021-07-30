@@ -60,10 +60,13 @@ classdef projManager
             S.projectInfo.comments = string(answer{3});
             S.projectInfo.creationDate = string(datestr(now,'yyyymmdd_hhMMss'));
             S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
+            S.projectInfo.lastImageID = 0;
 
             xmlFullPath = foldFullPath + filesep + "pLabelerProject.xml";
             writestruct(S, xmlFullPath, "StructNodeName", "pLabelerProject");
             
+            projectFolder = foldFullPath;
+            bool = true;
             functionality.writeToLog(logHandle, "New project created!")
         end
         

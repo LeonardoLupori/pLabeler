@@ -3,6 +3,8 @@ classdef pLabeler < handle
     properties
         gHandles      % Struct with handles of GUI's graphic objects
         defPath = 'C:\';
+        projectPath = "";
+        projectName = "";
         
     end
     
