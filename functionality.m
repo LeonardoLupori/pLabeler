@@ -20,6 +20,10 @@ classdef functionality
             % Add frames from Video (RANDOM)
             gHandles.RandomMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
             
+            % Previous image
+            gHandles.PrevImButton.ButtonPushedFcn = {@functionality.PrevImButtonClbk, app};
+            % Next Image
+            gHandles.NextImButton.ButtonPushedFcn = {@functionality.NextImButtonClbk, app};
             
             % Pupillometry
             gHandles.PupillometryMenu.MenuSelectedFcn = {@functionality.PupillometryMenuClbk, app};
@@ -31,13 +35,16 @@ classdef functionality
         
         % NEW PROJECT
         function NewProjectMenuClbk(~,~,app)
-            [bool, projectFolder, projectName] = projManager.createNewProj(app.defPath,app.gHandles.Log);
+            [bool, projectFolder, projectName, xmlStruct] = projManager.createNewProj(app.defPath,app.gHandles.Log);
             if bool
                 app.defPath = string(projectFolder);
                 app.projectName = string(projectName);
-                app.projectPath = string(pth);
+                app.projectPath = string(projectFolder);
                 app.gHandles.CurrentProjectLabel.Text = "Current Project: " + ...
-                projectName;
+                    projectName;
+                
+                app.xmlStruct = xmlStruct;
+                functionality.enableTool(app,'buttons','on')
             end
         end
         
@@ -57,11 +64,14 @@ classdef functionality
             app.defPath = string(pth);
             app.projectName = string(S.projectInfo.projectName);
             app.projectPath = string(pth);
+            app.currImgID = S.projectInfo.currentImgID;
             app.gHandles.CurrentProjectLabel.Text = "Current Project: " + ...
                 S.projectInfo.projectName;
+            app.xmlStruct = S;
             
             msg = sprintf("Loaded project: '%s'", S.projectInfo.projectName);
             functionality.writeToLog(app.gHandles.Log, msg)
+            functionality.enableTool(app,'buttons','on')
         end
         
         % ADD IMAGES from image FILES (.png, .jpg or .tif)
@@ -102,13 +112,15 @@ classdef functionality
                 im = imread([pth filesep fN{i}]);
                 im = im2gray(im);
                 % Actually add the image
-                bool = functionality.addImageToProject(im,app.projectPath,app.projectName); 
+                bool = functionality.addImageToProject(im,app);
                 success(i) = bool;
                 if ~bool
                     msg = "ERROR adding image: " + fN{i};
                     functionality.writeToLog(app.gHandles.Log, msg)
                 end
             end
+            
+            functionality.updateStructFromFile(app)
             msg = sprintf("Successfully added %u images", sum(bool));
             functionality.writeToLog(app.gHandles.Log, msg)
         end
@@ -177,22 +189,43 @@ classdef functionality
                 % Add each extracted frame one by one
                 framesAdded = 0;
                 for j = 1:size(extractedFrames,3)
-                    bool = functionality.addImageToProject(extractedFrames(:,:,j),...
-                        app.projectPath,app.projectName);
+                    bool = functionality.addImageToProject(extractedFrames(:,:,j),app);
                     framesAdded = framesAdded + bool;
                 end
                 msg = sprintf("Successfully added %u images", framesAdded);
                 functionality.writeToLog(app.gHandles.Log, msg)
             end
+            
+            functionality.updateStructFromFile(app)
             functionality.writeToLog(app.gHandles.Log, "Success.")
             
             
         end
         
-        function PrevImButtonClbk(src, event)
+        % Select PREVIOUS image
+        function PrevImButtonClbk(~, ~, app)
+            % Update the currImg ID value to the next available image ID
+            idList = [app.xmlStruct.images.image.id];
+            idx = find(idList == app.currImgID);
+            if idx == 1
+                app.currImgID = idList(end);
+            else
+                app.currImgID = idList(idx-1);
+            end
+            graphics.updateGraphics(app)
         end
         
-        function NextImButtonClbk(src, event)
+        % Select NEXT image
+        function NextImButtonClbk(~, ~, app)
+            % Update the currImg ID value to the next available image ID
+            idList = [app.xmlStruct.images.image.id];            
+            idx = find(idList == app.currImgID);
+            if idx == length(idList)
+                app.currImgID = idList(1);
+            else
+                app.currImgID = idList(idx+1);
+            end
+            graphics.updateGraphics(app)
         end
         
         function DeletePupButtonClbk(src, event)
@@ -249,13 +282,16 @@ classdef functionality
         end
         
         % Function for adding single images to the project
-        function bool = addImageToProject(img, projectPath, projectName)
-                        
+        function bool = addImageToProject(img, app)
+            
+            projectPath = app.projectPath;
+            projectName = app.projectName;
+            
             % Load the XML as a struct
             xmlFullPath = projectPath + filesep +  "pLabelerProject.xml";
             S = readstruct(xmlFullPath);
             
-            % Create a filename for the new image 
+            % Create a filename for the new image
             newImgID = S.projectInfo.lastImageID + 1;
             newImgFileName = sprintf("%05u" + "_frame_" + projectName + ".jpg", newImgID);
             
@@ -266,9 +302,52 @@ classdef functionality
             S = projManager.addImgToXmlStruct(S, newImgFileName);
             writestruct(S, xmlFullPath);
             
+            if app.currImgID == 0
+                app.currImgID = newImgID;
+            end
+            
             bool = true;
         end
         
+        % Load the latest XML file as a GUI property
+        function updateStructFromFile(app)
+            S = readstruct(app.projectPath + filesep + "pLabelerProject.xml");
+            app.xmlStruct = S;
+        end
+        
+        % Convert strings in logical (e.g., "True" to true)
+        function bool = str2logical(str)
+            trueList = ["True","true","1"];
+            falseList = ["False","false","0"];
+            if ismember(str,trueList)
+                bool = true;
+            elseif ismember(str,falseList)
+                bool = false;
+            else
+                error("Unrecognized string")
+            end
+        end
+        
+        % Enable or disable groups of UI elements
+        function enableTool(app, handleSubset, state)
+            switch handleSubset
+                case 'buttons'
+                    handleList = [app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
+                        app.gHandles.PrevImButton, app.gHandles.NextImButton];
+                case 'all'
+            end
+            
+            % Enable or disable all the elements of the handle subset
+            for i = 1:length(handleList)
+                handleList(i).Enable = state;
+            end
+            
+            
+        end
         
     end
 end
+
+
+
+

@@ -3,7 +3,7 @@ classdef projManager
     methods (Static)
         
         % Create a new project folder and initialize all files and folders
-        function [bool, projectFolder, projectName] = createNewProj(startPath,logHandle)
+        function [bool, projectFolder, projectName, xmlStruct] = createNewProj(startPath,logHandle)
             
             % Default outputs
             bool = false;
@@ -59,12 +59,14 @@ classdef projManager
             S.projectInfo.projectName = string(answer{1});
             S.projectInfo.experimenter = string(answer{2});
             S.projectInfo.comments = string(answer{3});
+            S.projectInfo.currentImgID = 0;
             S.projectInfo.creationDate = string(datestr(now,'yyyymmdd_hhMMss'));
             S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
             S.projectInfo.lastImageID = 0;
             
             xmlFullPath = foldFullPath + filesep + "pLabelerProject.xml";
             writestruct(S, xmlFullPath, "StructNodeName", "pLabelerProject");
+            xmlStruct = S;
             
             projectFolder = foldFullPath;
             bool = true;
@@ -78,6 +80,7 @@ classdef projManager
             
             if ~isfield(S,'images')
                 % If there are no images in the XML
+                S.images.image.id = newImgID;
                 S.images.image.frameFileName = newImgFileName;
                 S.images.image.labelFileName = "";
                 S.images.image.eyeBbox.x = NaN;
@@ -89,6 +92,7 @@ classdef projManager
                 S.images.image.isRejected = false;
             else
                 % Otherwise create a newImage struct
+                newImage.id = newImgID;
                 newImage.frameFileName = newImgFileName;
                 newImage.labelFileName = "";
                 newImage.eyeBbox.x = NaN;
@@ -108,7 +112,17 @@ classdef projManager
             
         end
         
-        
+        function updateXML_currentImgID(app)
+            %Load xml as a struct
+            xmlFullPath = app.projectPath + filesep + "pLabelerProject.xml";
+            S = readstruct(xmlFullPath);
+            % Change values
+            S.projectInfo.currentImgID = app.currImgID;
+            S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
+            % Save back the XML
+            writestruct(S, xmlFullPath);
+            
+        end
         
         
     end

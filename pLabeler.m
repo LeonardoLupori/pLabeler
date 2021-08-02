@@ -6,6 +6,12 @@ classdef pLabeler < handle
         projectPath = "";
         projectName = "";
         
+        currImgID = 0;
+        currImg = [];
+        currBbox = [];
+        currPupEllipse = [];
+        
+        xmlStruct = [];
     end
     
     methods
@@ -39,6 +45,9 @@ classdef pLabeler < handle
         end
         
         function closeFunction(app,~,~)
+            % Store the currentImgID in the XML file
+            projManager.updateXML_currentImgID(app)
+            
             delete(app.gHandles.fig_image)
             delete(app.gHandles.fig_pLabeler)
         end

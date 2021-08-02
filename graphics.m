@@ -26,6 +26,9 @@ classdef graphics
             handles.imgHandle = imshow(imread('media/pLabelerWelcome.png'),...
                 'Parent', handles.ax_image);
             
+            handles.blinkHandle = [];
+            handles.rejectHandle = [];
+            
             axtoolbar(handles.ax_image,{'pan','zoomin','zoomout','restoreview'});
             enableDefaultInteractivity(handles.ax_image);
             
@@ -60,11 +63,6 @@ classdef graphics
             handles.LoadProjectMenu = uimenu(handles.FileMenu);
             handles.LoadProjectMenu.Accelerator = 'L';
             handles.LoadProjectMenu.Text = 'Load Project';
-
-            % Create SaveProjectMenu
-            handles.SaveProjectMenu = uimenu(handles.FileMenu);
-            handles.SaveProjectMenu.Accelerator = 'S';
-            handles.SaveProjectMenu.Text = 'Save Project';
 
             % Create AddImgsMenu
             handles.AddImgsMenu = uimenu(handles.FileMenu);
@@ -194,6 +192,7 @@ classdef graphics
             handles.BlackSlider.Enable = 'off';
             handles.BlackSlider.Tooltip = {'Adjust the black level of the current image'};
             handles.BlackSlider.Position = [60 13 251 3];
+            handles.BlackSlider.Value = 0;
 
             % Create InvertImCheckBox
             handles.InvertImCheckBox = uicheckbox(handles.ImAdjPanel);
@@ -227,12 +226,6 @@ classdef graphics
             handles.PrevImButton.Position = [11 390 160 21];
             handles.PrevImButton.Text = '< Prev Image (A)';
 
-            % Create DeletePupButton
-            handles.DeletePupButton = uibutton(handles.fig_pLabeler, 'push');
-            handles.DeletePupButton.Enable = 'off';
-            handles.DeletePupButton.Position = [260 540 100 30];
-            handles.DeletePupButton.Text = 'Delete Pupil (Q)';
-
             % Create DrawPupButton
             handles.DrawPupButton = uibutton(handles.fig_pLabeler, 'push');
             handles.DrawPupButton.Enable = 'off';
@@ -249,28 +242,89 @@ classdef graphics
             handles.fig_pLabeler.Visible = 'on';
         end
         
-        function showTutorial()
-            f = uifigure('Resize', 'off',...
-                'Name', 'Tutorial',...
-                'NumberTitle','off',...
-                'ToolBar','none',...
-                'MenuBar','none');
+        function processedImg = imageProprocess(inputImage, app)
             
-            mainGrid = uigridlayout(f,[1,2]);
+            processedImg = inputImage;
             
-            panel_left = uipanel(mainGrid,'Title','Left');
-            panel_right = uipanel(mainGrid,'Title','Right');
+            % INVERT IMAGE
+            toInvert = app.gHandles.InvertImCheckBox.Value;
+            if toInvert
+                processedImg = imcomplement(processedImg);
+            end
             
-            grid_L = uigridlayout(panel_left,...
-                'ColumnWidth',{'1x','4x'});
+            % CONTRAST ADJUSTMENT
+            autoContrast = app.gHandles.AutoCntrCheckBox.Value;
+            if autoContrast
+                % Get the contrast limits based on the selected method
+                if strcmpi(app.gHandles.AutoCntrSwitch.Value, 'min/max')
+                    imLimits = [min(inputImage(:)), max(inputImage(:))];
+                elseif strcmpi(app.gHandles.AutoCntrSwitch.Value, 'best fit')
+                    imLimits = [quantile(inputImage(:), .01),...
+                        quantile(inputImage(:), .99)];
+                end
+                imLimits = imLimits./ 255;
+            else
+                imLimits = [app.gHandles.BlackSlider.Value,...
+                    app.gHandles.WhiteSlider.Value];
+            end
+            % Rescale the image values
+            processedImg = imadjust(processedImg, imLimits);
+        end
+        
+        function [img, label, isBlinking, isRejected, imNumber, imName] = getCurrImage(app)
+            if app.currImgID == 0
+                msg = "No image selected to display";
+                functionality.writeToLog(app.gHandles.Log, msg)
+            end
             
-            uilabel('Parent',grid_L,'Text','A:','FontWeight','bold',...
-                'HorizontalAlignment','right');
-            uilabel('Parent',grid_L,'Text','Previous image');
+            imList = app.xmlStruct.images.image;
             
-            uilabel('Parent',grid_L,'Text','S:','FontWeight','bold',...
-                'HorizontalAlignment','right');
-            uilabel('Parent',grid_L,'Text','Next image');
+            % Locate the current image in the XML based on its ID
+            idx = find([imList.id] == app.currImgID);
+            imNumber = [idx, length(imList)];
+            imName = imList(idx).frameFileName;
+            
+            % Load the frame
+            img = imread(app.projectPath + filesep + "frames" + filesep + imList(idx).frameFileName);
+            % Try to load labels if they exist
+            if strlength(imList(idx).labelFileName) == 0
+                label = [];
+            else
+                label = imread(app.projectPath + filesep + "labels" + filesep + imList(idx).frameFileName);
+            end
+            isBlinking = functionality.str2logical(imList(idx).isBlinking);
+            isRejected = functionality.str2logical(imList(idx).isRejected);
+            
+        end
+        
+        function updateGraphics(app)
+            [img, label, isBlinking, isRejected, imNumber, imName] = graphics.getCurrImage(app);
+            img = graphics.imageProprocess(img, app);
+            app.gHandles.imgHandle.CData = img;
+            figTitle = sprintf("pLabeler - display window - (%u/%u) - %s",...
+                imNumber(1), imNumber(2), imName);
+            app.gHandles.fig_image.Name = figTitle;
+            colormap(app.gHandles.ax_image,'gray')
+            
+            % Clear blink and rejected text objects
+            if ishandle(app.gHandles.blinkHandle)
+                delete(app.gHandles.blinkHandle)
+            end
+            if ishandle(app.gHandles.rejectHandle)
+                delete(app.gHandles.rejectHandle)
+            end
+            
+            if isBlinking
+                app.gHandles.blinkHandle = text(5,20,'Blink','FontSize',25,...
+                    'Color',[.39, .83 .07],'FontWeight','bold');
+            end
+            if isRejected
+                x = round(size(img,2)/2) - 80;
+                y = round(size(img,1)/2);
+                app.gHandles.rejectHandle = text(x,y,'Rejected','FontSize',30,...
+                    'Color',[.9, 0 0],'FontWeight','bold');
+            end
+            
         end
         
     end
