@@ -8,8 +8,8 @@ classdef imageManager
         
         
         
-        
-        function extractedFrames = extractFrameFromVideo(videoPath, reqFrames)
+        % Extract frames SMART
+        function extractedFrames = extractFrameFromVideo_smart(videoPath, reqFrames)
             
             v = VideoReader(videoPath);
 
@@ -18,7 +18,7 @@ classdef imageManager
             framesIdx = randperm(v.NumFrames, reqFrames*10);
             framesIdx = sort(framesIdx, 'ascend');
             % Load those frames
-            movie = zeros(v.Height, v.Width, putativeFramesNumber);
+            movie = zeros(v.Height, v.Width, putativeFramesNumber, 'uint8');
             for i=1:putativeFramesNumber
                 % Set the video time to grab next frame indexed in framesIdx
                 curTime = (framesIdx(i)-1) * (1/v.FrameRate);
@@ -30,6 +30,7 @@ classdef imageManager
             % Timepoints are variables and pixels are observations
             resizeTo = 64;
             resizedMovie = imresize(movie, [resizeTo, resizeTo]);
+            resizedMovie = double(resizedMovie);
             reshMov = reshape(resizedMovie, resizeTo^2, size(movie,3));
             coeff = pca(reshMov);
             % Take the first Principal Component
@@ -47,6 +48,27 @@ classdef imageManager
             % Get the output frames
             extractedFrames = movie(:,:,selectedFramesIdx);
             
+        end
+        
+        % Extract frames RANDOM
+        function extractedFrames = extractFrameFromVideo_random(videoPath, reqFrames)
+            v = VideoReader(videoPath);
+
+            % Choose randomly the number of requested frames
+            framesIdx = randperm(v.NumFrames, reqFrames);
+            framesIdx = sort(framesIdx, 'ascend');
+            % Load those frames
+            movie = zeros(v.Height, v.Width, reqFrames,'uint8');
+            for i=1:reqFrames
+                % Set the video time to grab next frame indexed in framesIdx
+                curTime = (framesIdx(i)-1) * (1/v.FrameRate);
+                v.CurrentTime = curTime;
+                % Grab frame and process it
+                movie(:,:,i) = im2gray(v.readFrame);
+            end
+            
+            % Get the output frames
+            extractedFrames = movie;
         end
         
         

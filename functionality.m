@@ -15,8 +15,12 @@ classdef functionality
             gHandles.LoadProjectMenu.MenuSelectedFcn = {@functionality.LoadProjectMenuClbk, app};
             % Add frames from Images
             gHandles.FromFilesMenu.MenuSelectedFcn = {@functionality.FromFilesMenuClbk, app};
-            % Add frames from Video
-            gHandles.FromVideoMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
+            % Add frames from Video (SMART)
+            gHandles.SmartMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
+            % Add frames from Video (RANDOM)
+            gHandles.RandomMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
+            
+            
             % Pupillometry
             gHandles.PupillometryMenu.MenuSelectedFcn = {@functionality.PupillometryMenuClbk, app};
             
@@ -27,9 +31,13 @@ classdef functionality
         
         % NEW PROJECT
         function NewProjectMenuClbk(~,~,app)
-            [bool, projectFolder] = projManager.createNewProj(app.defPath,app.gHandles.Log);
+            [bool, projectFolder, projectName] = projManager.createNewProj(app.defPath,app.gHandles.Log);
             if bool
-                app.defPath = projectFolder;
+                app.defPath = string(projectFolder);
+                app.projectName = string(projectName);
+                app.projectPath = string(pth);
+                app.gHandles.CurrentProjectLabel.Text = "Current Project: " + ...
+                projectName;
             end
         end
         
@@ -46,9 +54,9 @@ classdef functionality
             end
             
             S = readstruct([pth filesep fN]);
-            app.defPath = pth;
-            app.projectName = S.projectInfo.projectName;
-            app.projectPath = pth;
+            app.defPath = string(pth);
+            app.projectName = string(S.projectInfo.projectName);
+            app.projectPath = string(pth);
             app.gHandles.CurrentProjectLabel.Text = "Current Project: " + ...
                 S.projectInfo.projectName;
             
@@ -57,7 +65,7 @@ classdef functionality
         end
         
         % ADD IMAGES from image FILES (.png, .jpg or .tif)
-        function FromFilesMenuClbk(~, ~, app)
+        function FromFilesMenuClbk(~,~,app)
             
             % Check if a project is currently loaded
             if strlength(app.projectPath) == 0 || strlength(app.projectName) == 0
@@ -76,7 +84,7 @@ classdef functionality
                 return
             end
             
-            % If user selected only one file convert it to cell anyways so
+            % If user selected only one file, convert it to cell anyways so
             % that the same syntax (cell {} indexing) can be used
             if ~iscell(fN)
                 fN = {fN};
@@ -106,7 +114,79 @@ classdef functionality
         end
         
         % ADD IMAGES from a VIDEO
-        function FromVideoMenuClbk(src, event, app)
+        function FromVideoMenuClbk(src,~,app)
+            
+            % Check if a project is currently loaded
+            if strlength(app.projectPath) == 0 || strlength(app.projectName) == 0
+                msg = "ERROR. No project loaded.";
+                functionality.writeToLog(app.gHandles.Log, msg)
+                return
+            end
+            
+            % Let user select one or more videos
+            functionality.writeToLog(app.gHandles.Log, "Select video to import.")
+            tit = "Select images to import to the project";
+            filter = getFilterSpec(VideoReader.getFileFormats());
+            [fN,pth] = uigetfile(filter,tit, app.defPath, 'MultiSelect', 'on');
+            if isequal(fN, 0)
+                functionality.writeToLog(app.gHandles.Log, "aborted by user.")
+                return
+            end
+            
+            % If user selected only one file, convert it to cell anyways so
+            % that the same syntax (cell {} indexing) can be used
+            if ~iscell(fN)
+                fN = {fN};
+            end
+            
+            % Specify how many frames to extract
+            dlgtitle = "Frames extraction";
+            prompt = "How many frames to extract?";
+            dims = repmat([1,50], length(prompt),1);
+            answer = inputdlg(prompt,dlgtitle,dims,"100");
+            % Return if user clicks cancel
+            if isempty(answer)
+                functionality.writeToLog(app.gHandles.Log, "aborted by user.")
+                return
+            end
+            % Check if the # of requested frames is a positive number
+            reqFrames = round(str2double(answer{1}));
+            if reqFrames < 1 || isnan(reqFrames)
+                functionality.writeToLog(app.gHandles.Log,...
+                    "Invalid number of requested frames.")
+                return
+            end
+            
+            % Cycle through all the videos
+            for i = 1:length(fN)
+                videoPath = [pth filesep fN{i}];
+                if src == app.gHandles.SmartMenu
+                    msg = sprintf('Smart extracting %u frames from video (%u/%u)...',...
+                        reqFrames,i,length(fN));
+                    functionality.writeToLog(app.gHandles.Log, msg)
+                    extractedFrames = imageManager.extractFrameFromVideo_smart(...
+                        videoPath, reqFrames);
+                elseif src == app.gHandles.RandomMenu
+                    msg = sprintf('Randomly extracting %u frames from video (%u/%u)...',...
+                        reqFrames,i,length(fN));
+                    functionality.writeToLog(app.gHandles.Log, msg)
+                    extractedFrames = imageManager.extractFrameFromVideo_random(...
+                        videoPath, reqFrames);
+                end
+                functionality.writeToLog(app.gHandles.Log, "Adding frames to the project...")
+                % Add each extracted frame one by one
+                framesAdded = 0;
+                for j = 1:size(extractedFrames,3)
+                    bool = functionality.addImageToProject(extractedFrames(:,:,j),...
+                        app.projectPath,app.projectName);
+                    framesAdded = framesAdded + bool;
+                end
+                msg = sprintf("Successfully added %u images", framesAdded);
+                functionality.writeToLog(app.gHandles.Log, msg)
+            end
+            functionality.writeToLog(app.gHandles.Log, "Success.")
+            
+            
         end
         
         function PrevImButtonClbk(src, event)
@@ -164,6 +244,7 @@ classdef functionality
                 newValue = cat(1, logHandle.Value, newString);
                 logHandle.Value = newValue;
             end
+            drawnow
             scroll(logHandle, 'bottom')
         end
         
@@ -187,6 +268,7 @@ classdef functionality
             
             bool = true;
         end
+        
         
     end
 end

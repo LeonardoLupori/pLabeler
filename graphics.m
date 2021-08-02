@@ -78,6 +78,16 @@ classdef graphics
             % Create FromVideoMenu
             handles.FromVideoMenu = uimenu(handles.AddImgsMenu);
             handles.FromVideoMenu.Text = 'From Video';
+            
+            % Create SmartMenu
+            handles.SmartMenu = uimenu(handles.FromVideoMenu);
+            handles.SmartMenu.Tooltip = {'Slow. PCA-based frames selection to get the most differing frames'};
+            handles.SmartMenu.Text = 'Smart sample(PCA)';
+
+            % Create RandomMenu
+            handles.RandomMenu = uimenu(handles.FromVideoMenu);
+            handles.RandomMenu.Tooltip = {'Fast. Random selection of frames'};
+            handles.RandomMenu.Text = 'Random sample';
 
             % Create ExportLabelsMenu
             handles.ExportLabelsMenu = uimenu(handles.FileMenu);

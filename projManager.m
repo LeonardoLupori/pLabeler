@@ -3,7 +3,7 @@ classdef projManager
     methods (Static)
         
         % Create a new project folder and initialize all files and folders
-        function [bool, projectFolder] = createNewProj(startPath,logHandle)
+        function [bool, projectFolder, projectName] = createNewProj(startPath,logHandle)
             
             % Default outputs
             bool = false;
@@ -36,10 +36,10 @@ classdef projManager
             
             % Create project folder
             %--------------------------------------------------------------
-            pName = string(answer{1});
-            pName = strrep(pName, ' ', '-');    % remove whitespaces from projectName
+            projectName = string(answer{1});
+            projectName = strrep(projectName, ' ', '-');    % remove whitespaces from projectName
             presentDate = string(datestr(now,'yyyymmdd'));
-            foldName = presentDate + "_" + pName;
+            foldName = presentDate + "_" + projectName;
             foldFullPath = string(selpath) + filesep +  foldName;
             status = mkdir(foldFullPath);
             if isequal(status,0)
@@ -74,14 +74,16 @@ classdef projManager
         % Add a new image to the XML struct 
         function S = addImgToXmlStruct(S, newImgFileName)
             
+            newImgID = S.projectInfo.lastImageID + 1;
+            
             if ~isfield(S,'images')
                 % If there are no images in the XML
                 S.images.image.frameFileName = newImgFileName;
                 S.images.image.labelFileName = "";
-                S.images.image.eyeBbox.x = [];
-                S.images.image.eyeBbox.y = [];
-                S.images.image.eyeBbox.width = [];
-                S.images.image.eyeBbox.height = [];
+                S.images.image.eyeBbox.x = NaN;
+                S.images.image.eyeBbox.y = NaN;
+                S.images.image.eyeBbox.width = NaN;
+                S.images.image.eyeBbox.height = NaN;
                 S.images.image.isEye = true;
                 S.images.image.isBlinking = false;
                 S.images.image.isRejected = false;
@@ -89,15 +91,15 @@ classdef projManager
                 % Otherwise create a newImage struct
                 newImage.frameFileName = newImgFileName;
                 newImage.labelFileName = "";
-                newImage.eyeBbox.x = [];
-                newImage.eyeBbox.y = [];
-                newImage.eyeBbox.width = [];
-                newImage.eyeBbox.height = [];
+                newImage.eyeBbox.x = NaN;
+                newImage.eyeBbox.y = NaN;
+                newImage.eyeBbox.width = NaN;
+                newImage.eyeBbox.height = NaN;
                 newImage.isEye = true;
                 newImage.isBlinking = false;
                 newImage.isRejected = false;
                 % Concatenate the struct to the existing list
-                S.images.image = cat(1, S.images.image, newImage);
+                S.images.image = cat(2, S.images.image, newImage);
             end
             
             % Update the XML file
