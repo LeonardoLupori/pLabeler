@@ -8,12 +8,15 @@ classdef functionality
         function assignCallbacks(app)
             gHandles = app.gHandles;
             
+            
+            % New Project
+            gHandles.NewProjectMenu.MenuSelectedFcn = {@functionality.NewProjectMenuClbk, app};
+            % Load Project
+            gHandles.LoadProjectMenu.MenuSelectedFcn = {@functionality.LoadProjectMenuClbk, app};
             % Add frames from Images
             gHandles.FromFilesMenu.MenuSelectedFcn = {@functionality.FromFilesMenuClbk, app};
             % Add frames from Video
             gHandles.FromVideoMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
-            % New Project
-            gHandles.NewProjectMenu.MenuSelectedFcn = {@functionality.NewProjectMenuClbk, app};
             % Pupillometry
             gHandles.PupillometryMenu.MenuSelectedFcn = {@functionality.PupillometryMenuClbk, app};
             
@@ -22,7 +25,46 @@ classdef functionality
         % CALLBACK FUNCTIONS
         %------------------------------------------------------------------
         
-        function FromFilesMenuClbk(src, event, app)
+        % NEW PROJECT
+        function NewProjectMenuClbk(~,~,app)
+            [bool, projectFolder] = projManager.createNewProj(app.defPath,app.gHandles.Log);
+            if bool
+                app.defPath = projectFolder;
+            end
+        end
+        
+        % LOAD PROJECT
+        function LoadProjectMenuClbk(~,~,app)
+            % Search for a project .XML file
+            tit = "Load a project XML file.";
+            [fN,pth] = uigetfile({'*.xml', 'pLabeler Project (*.xml)'},...
+                tit, app.defPath);
+            figure(app.gHandles.fig_pLabeler)   % Give focus back to main UI
+            if isequal(fN, 0)
+                functionality.writeToLog(app.gHandles.Log, "No project loaded.")
+                return
+            end
+            
+            S = readstruct([pth filesep fN]);
+            app.defPath = pth;
+            app.projectName = S.projectInfo.projectName;
+            app.projectPath = pth;
+            app.gHandles.CurrentProjectLabel.Text = "Current Project: " + ...
+                S.projectInfo.projectName;
+            
+            msg = sprintf("Loaded project: '%s'", S.projectInfo.projectName);
+            functionality.writeToLog(app.gHandles.Log, msg)
+        end
+        
+        % ADD IMAGES from image FILES (.png, .jpg or .tif)
+        function FromFilesMenuClbk(~, ~, app)
+            
+            % Check if a project is currently loaded
+            if strlength(app.projectPath) == 0 || strlength(app.projectName) == 0
+                msg = "ERROR. No project loaded.";
+                functionality.writeToLog(app.gHandles.Log, msg)
+                return
+            end
             
             % Let user select one or more images
             functionality.writeToLog(app.gHandles.Log, "Select images to import.")
@@ -45,13 +87,17 @@ classdef functionality
             functionality.writeToLog(app.gHandles.Log, msg)
             success = zeros(length(fN),1,'logical');
             for i = 1:length(fN)
+                if mod(i,20) == 0
+                    msg = sprintf("processing image (%u/%u)...",i,length(fN));
+                    functionality.writeToLog(app.gHandles.Log, msg)
+                end
                 im = imread([pth filesep fN{i}]);
                 im = im2gray(im);
                 % Actually add the image
                 bool = functionality.addImageToProject(im,app.projectPath,app.projectName); 
                 success(i) = bool;
                 if ~bool
-                    msg = "FAILED adding image: " + fN{i};
+                    msg = "ERROR adding image: " + fN{i};
                     functionality.writeToLog(app.gHandles.Log, msg)
                 end
             end
@@ -59,9 +105,8 @@ classdef functionality
             functionality.writeToLog(app.gHandles.Log, msg)
         end
         
-        
+        % ADD IMAGES from a VIDEO
         function FromVideoMenuClbk(src, event, app)
-            
         end
         
         function PrevImButtonClbk(src, event)
@@ -97,77 +142,50 @@ classdef functionality
         function HelpMenuClbk(src, event)
         end
         
+        % Link to www.pupillometry.it website
         function PupillometryMenuClbk(~,~,app)
             functionality.writeToLog(app.gHandles.Log, "Link to www.pupillometry.it")
             web('www.pupillometry.it', '-browser')
         end
         
-        function NewProjectMenuClbk(~,~,app)
-            [bool, projectFolder] = projManager.createNewProj(app.defPath,app.gHandles.Log);
-            if bool
-                app.defPath = projectFolder;
-            end
-        end
         
         %------------------------------------------------------------------
         % ADDITIONAL FUNCTIONS
         %------------------------------------------------------------------
         
+        % Tool for easily writing in the Log Window
         function writeToLog(logHandle, string)
-            if isempty(logHandle.Value)
-                logHandle.Value = string;
+            time = datestr(now, "[hh:MM:ss]");
+            newString = time + "-" + string;
+            
+            if all(strlength(logHandle.Value) == 0)
+                logHandle.Value = newString;
             else
-                newValue = cat(1, logHandle.Value, string);
+                newValue = cat(1, logHandle.Value, newString);
                 logHandle.Value = newValue;
             end
             scroll(logHandle, 'bottom')
         end
         
+        % Function for adding single images to the project
         function bool = addImageToProject(img, projectPath, projectName)
-            
-% % % % % %             projectPath = "C:\Users\Leonardo\Desktop\sandbox\20210730_prova2";
-% % % % % %             projectName = "prova2";
-            
+                        
+            % Load the XML as a struct
             xmlFullPath = projectPath + filesep +  "pLabelerProject.xml";
             S = readstruct(xmlFullPath);
-
             
-            
+            % Create a filename for the new image 
             newImgID = S.projectInfo.lastImageID + 1;
             newImgFileName = sprintf("%05u" + "_frame_" + projectName + ".jpg", newImgID);
             
+            % Write the image in the "frames" folder
             imwrite(img, projectPath + filesep + "frames" + filesep + newImgFileName)
             
-            if ~isfield(S,'images')
-                % If there are no images in the XML
-                S.images.image.frameFileName = newImgFileName;
-                S.images.image.labelFileName = "";
-                S.images.image.eyeBbox.x = [];
-                S.images.image.eyeBbox.y = [];
-                S.images.image.eyeBbox.width = [];
-                S.images.image.eyeBbox.height = [];
-                S.images.image.isEye = true;
-                S.images.image.isBlinking = false;
-                S.images.image.isRejected = false;
-            else
-                % Otherwise create a newImage struct
-                newImage.frameFileName = newImgFileName;
-                newImage.labelFileName = "";
-                newImage.eyeBbox.x = [];
-                newImage.eyeBbox.y = [];
-                newImage.eyeBbox.width = [];
-                newImage.eyeBbox.height = [];
-                newImage.isEye = true;
-                newImage.isBlinking = false;
-                newImage.isRejected = false;
-                % Concatenate the struct to the existing list
-                S.images.image = cat(1, S.images.image, newImage);
-            end
-            
-            % Update the XML file
-            S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
-            S.projectInfo.lastImageID = newImgID;
+            % Update the XML with info of this new image
+            S = projManager.addImgToXmlStruct(S, newImgFileName);
             writestruct(S, xmlFullPath);
+            
+            bool = true;
         end
         
     end

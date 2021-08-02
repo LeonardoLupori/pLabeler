@@ -2,6 +2,7 @@ classdef projManager
     
     methods (Static)
         
+        % Create a new project folder and initialize all files and folders
         function [bool, projectFolder] = createNewProj(startPath,logHandle)
             
             % Default outputs
@@ -61,7 +62,7 @@ classdef projManager
             S.projectInfo.creationDate = string(datestr(now,'yyyymmdd_hhMMss'));
             S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
             S.projectInfo.lastImageID = 0;
-
+            
             xmlFullPath = foldFullPath + filesep + "pLabelerProject.xml";
             writestruct(S, xmlFullPath, "StructNodeName", "pLabelerProject");
             
@@ -70,7 +71,40 @@ classdef projManager
             functionality.writeToLog(logHandle, "New project created!")
         end
         
-        
+        % Add a new image to the XML struct 
+        function S = addImgToXmlStruct(S, newImgFileName)
+            
+            if ~isfield(S,'images')
+                % If there are no images in the XML
+                S.images.image.frameFileName = newImgFileName;
+                S.images.image.labelFileName = "";
+                S.images.image.eyeBbox.x = [];
+                S.images.image.eyeBbox.y = [];
+                S.images.image.eyeBbox.width = [];
+                S.images.image.eyeBbox.height = [];
+                S.images.image.isEye = true;
+                S.images.image.isBlinking = false;
+                S.images.image.isRejected = false;
+            else
+                % Otherwise create a newImage struct
+                newImage.frameFileName = newImgFileName;
+                newImage.labelFileName = "";
+                newImage.eyeBbox.x = [];
+                newImage.eyeBbox.y = [];
+                newImage.eyeBbox.width = [];
+                newImage.eyeBbox.height = [];
+                newImage.isEye = true;
+                newImage.isBlinking = false;
+                newImage.isRejected = false;
+                % Concatenate the struct to the existing list
+                S.images.image = cat(1, S.images.image, newImage);
+            end
+            
+            % Update the XML file
+            S.projectInfo.lastModified = string(datestr(now,'yyyymmdd_hhMMss'));
+            S.projectInfo.lastImageID = newImgID;
+            
+        end
         
         
         
