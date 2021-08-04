@@ -3,11 +3,13 @@ classdef functionality
     methods(Static)
         %------------------------------------------------------------------
         % Main function to assign callbacks to all the GUI buttons and
-        % menus
+        % menus.
         %------------------------------------------------------------------
         function assignCallbacks(app)
             gHandles = app.gHandles;
             
+            % FIGURE KEYPRESSES
+            gHandles.fig_image.KeyPressFcn = {@functionality.keyParser,app};
             
             % New Project
             gHandles.NewProjectMenu.MenuSelectedFcn = {@functionality.NewProjectMenuClbk, app};
@@ -19,6 +21,27 @@ classdef functionality
             gHandles.SmartMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
             % Add frames from Video (RANDOM)
             gHandles.RandomMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
+            
+            
+            % DRAW PUPIL (button)
+            gHandles.DrawPupButton.ButtonPushedFcn = {@functionality.DrawPupButtonClbk, app};
+%             gHandles.DrawPupilMenu.MenuSelectedFcn = 
+%             
+%             gHandles.DrawBbButton.ButtonPushedFcn = 
+%             gHandles.DrawBbMenu.MenuSelectedFcn = 
+            
+                        
+            
+            % INVERT image
+            gHandles.InvertImCheckBox.ValueChangedFcn = {@functionality.InvertImCheckBoxClbk,app};
+            % AUTO CONTRAST checkbox
+            gHandles.AutoCntrCheckBox.ValueChangedFcn = {@functionality.AutoCntrCheckBoxClbk,app};
+            % AUTO CONTRAST method switch
+            gHandles.AutoCntrSwitchClbk.ValueChangedFcn = {@functionality.AutoCntrSwitchClbk, app};
+            % Black SLIDER
+            gHandles.BlackSlider.ValueChangedFcn = {@functionality.BlackSliderClbk ,app};
+            % White SLIDER
+            gHandles.WhiteSlider.ValueChangedFcn = {@functionality.WhiteSliderClbk ,app};
             
             % Previous image
             gHandles.PrevImButton.ButtonPushedFcn = {@functionality.PrevImButtonClbk, app};
@@ -72,6 +95,10 @@ classdef functionality
             msg = sprintf("Loaded project: '%s'", S.projectInfo.projectName);
             functionality.writeToLog(app.gHandles.Log, msg)
             functionality.enableTool(app,'buttons','on')
+            
+            
+            graphics.updateGraphics(app)
+            
         end
         
         % ADD IMAGES from image FILES (.png, .jpg or .tif)
@@ -231,28 +258,51 @@ classdef functionality
         function DeletePupButtonClbk(src, event)
         end
         
-        function DrawPupButtonClbk(src, event)
+        function DrawPupButtonClbk(~, ~, app)
+            disableDefaultInteractivity(app.gHandles.ax_image)
+            app.gHandles.ROI_pupil = drawellipse(app.gHandles.ax_image,'color',[0 1 1]);
         end
         
         function DrawBbButtonClbk(src, event)
         end
         
-        function AutoCntrSwitchClbk(src, event)
+        % AUTO-CONTRAST
+        function AutoCntrCheckBoxClbk(src, ~, app)
+            if src.Value    % If the chackbox was ticked
+                functionality.enableTool(app, 'sliders', 'off')
+                functionality.enableTool(app, 'autoContrastMethod', 'on')
+            else            % If the chackbox was un-ticked
+                functionality.enableTool(app, 'sliders', 'on')
+                functionality.enableTool(app, 'autoContrastMethod', 'off')
+            end
+            
+            graphics.updateGraphics(app)
         end
         
-        function AutoCntrCheckBoxClbk(src, event)
+        % AUTO-CONTRAST METHOD
+        function AutoCntrSwitchClbk(~, ~, app)
+            graphics.updateGraphics(app)
         end
         
-        function InvertImCheckBoxClbk(src, event)
+        % INVERT image
+        function InvertImCheckBoxClbk(~, ~, app)
+            graphics.updateGraphics(app)
         end
         
-        function BlackSliderClbk(src, event)
+        % BLACK SLIDER
+        function BlackSliderClbk(src, ~, app)
+            if src.Value > app.gHandles.WhiteSlider.Value
+                src.Value = app.gHandles.WhiteSlider.Value - 0.01;
+            end
+            graphics.updateGraphics(app)
         end
         
-        function WhiteSliderClbk(src, event)
-        end
-        
-        function HelpMenuClbk(src, event)
+        % WHITE SLIDER
+        function WhiteSliderClbk(src, ~, app)
+            if src.Value < app.gHandles.BlackSlider.Value
+                src.Value = app.gHandles.BlackSlider.Value + 0.01;
+            end
+            graphics.updateGraphics(app)
         end
         
         % Link to www.pupillometry.it website
@@ -334,12 +384,50 @@ classdef functionality
                 case 'buttons'
                     handleList = [app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
                         app.gHandles.PrevImButton, app.gHandles.NextImButton];
+                case 'sliders'
+                    handleList = [app.gHandles.WhiteSlider, app.gHandles.BlackSlider,...
+                        app.gHandles.WhiteSliderLabel, app.gHandles.BlackSliderLabel];
+                case 'autoContrastMethod'
+                    handleList = app.gHandles.AutoCntrSwitch;
                 case 'all'
             end
             
             % Enable or disable all the elements of the handle subset
             for i = 1:length(handleList)
                 handleList(i).Enable = state;
+            end
+        end
+        
+        % Parse key press to execute functions
+        function keyParser(src,event,app)
+            
+            key = event.Key;
+            modifier = event.Modifier;
+            
+            switch key
+                case 'a'
+                    functionality.PrevImButtonClbk(src, event, app)
+                case 'd'
+                    functionality.NextImButtonClbk(src, event, app)
+                case 'e'
+                    functionality.DrawPupButtonClbk(src, event, app)
+                % SPACEBAR is generally used to "confirm" temporary
+                % edits that the user might do like drawing a pupil or a
+                % bounding box
+                case {'space', 'return'}     
+                    if ishandle(app.gHandles.ROI_pupil)
+                        % Create Mask from the ROI abject
+                        mask = createMask(app.gHandles.ROI_pupil, app.gHandles.imgHandle);
+                        mask = mask*0.4;
+                        graphics.updateOverlays(app, mask, [])
+                        delete(app.gHandles.ROI_pupil)
+                        enableDefaultInteractivity(app.gHandles.ax_image);
+                        axtoolbar(app.gHandles.ax_image,{'pan','zoomin','zoomout','restoreview'});
+                    end
+                case 'escape'
+                    if ishandle(app.gHandles.ROI_pupil)
+                        delete(app.gHandles.ROI_pupil)
+                    end
             end
             
             

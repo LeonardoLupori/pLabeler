@@ -25,9 +25,19 @@ classdef graphics
             
             handles.imgHandle = imshow(imread('media/pLabelerWelcome.png'),...
                 'Parent', handles.ax_image);
+            % Create the transparent overlays for the pupil
+            overlaySize = [size(handles.imgHandle.CData,1),size(handles.imgHandle.CData,2)];
+            handles.overlayPupil = graphics.createOverlay(handles.ax_image, overlaySize);
+            % Create a dummy rectangle for the handle
+            handles.overlayRectangle = rectangle(handles.ax_image,...
+                    'Position',[0 0 0 0],...
+                    'EdgeColor', [1 0 0], 'LineWidth', 2, 'LineStyle', ':');
             
             handles.blinkHandle = [];
             handles.rejectHandle = [];
+            
+            handles.ROI_pupil = [];
+            handles.ROI_bBox = [];
             
             axtoolbar(handles.ax_image,{'pan','zoomin','zoomout','restoreview'});
             enableDefaultInteractivity(handles.ax_image);
@@ -91,6 +101,7 @@ classdef graphics
             handles.ExportLabelsMenu = uimenu(handles.FileMenu);
             handles.ExportLabelsMenu.Separator = 'on';
             handles.ExportLabelsMenu.Text = 'Export Labeled Images';
+            handles.ExportLabelsMenu.Enable = 'off';
 
             % Create LabelingMenu
             handles.LabelingMenu = uimenu(handles.fig_pLabeler);
@@ -275,6 +286,7 @@ classdef graphics
             if app.currImgID == 0
                 msg = "No image selected to display";
                 functionality.writeToLog(app.gHandles.Log, msg)
+                return
             end
             
             imList = app.xmlStruct.images.image;
@@ -298,15 +310,39 @@ classdef graphics
         end
         
         function updateGraphics(app)
+            % Get the current image along with some metadata
             [img, label, isBlinking, isRejected, imNumber, imName] = graphics.getCurrImage(app);
             img = graphics.imageProprocess(img, app);
-            app.gHandles.imgHandle.CData = img;
+            
+            % Check if the new Img has the same resolution as the old one
+            % and update the Image showed
+            oldRes = size(app.gHandles.imgHandle.CData);
+            newRes = size(img);
+            if newRes(1) == oldRes(1) && newRes(2) == oldRes(2)
+                % Update the data on the displayed image object
+                app.gHandles.imgHandle.CData = img;
+            else
+                app.gHandles.imgHandle = imshow(img,'Parent',app.gHandles.ax_image);
+                app.gHandles.overlayPupil = graphics.createOverlay(app.gHandles.ax_image, size(img));
+            end
+            
+            % Update the pupil area showed
+            if isempty(label)
+                newMask = zeros(size(app.gHandles.imgHandle.CData,1),...
+                    size(app.gHandles.imgHandle.CData,2), 'double');
+            else
+                newMask = graphics.label2mask(label) * 0.4;
+            end
+            graphics.updateOverlays(app, newMask, [])
+            
+            
+            % Update the figure title
             figTitle = sprintf("pLabeler - display window - (%u/%u) - %s",...
                 imNumber(1), imNumber(2), imName);
             app.gHandles.fig_image.Name = figTitle;
             colormap(app.gHandles.ax_image,'gray')
             
-            % Clear blink and rejected text objects
+            % Delete existing blink and rejected text objects
             if ishandle(app.gHandles.blinkHandle)
                 delete(app.gHandles.blinkHandle)
             end
@@ -314,6 +350,7 @@ classdef graphics
                 delete(app.gHandles.rejectHandle)
             end
             
+            % Draw new blinking and rejected text objects if appropiate
             if isBlinking
                 app.gHandles.blinkHandle = text(5,20,'Blink','FontSize',25,...
                     'Color',[.39, .83 .07],'FontWeight','bold');
@@ -325,6 +362,33 @@ classdef graphics
                     'Color',[.9, 0 0],'FontWeight','bold');
             end
             
+        end
+        
+        function overlayHandle = createOverlay(targetAx, overlaySize)
+            % Generate uniform image to overlay
+            pupilOverlay = zeros([overlaySize,3],'uint8');
+            pupilOverlay(:,:,2:3) = 255;
+            
+            completelyTransparent = zeros(overlaySize,'double');
+            % Draw the overlay for the pupil and the eye bounding box
+            hold(targetAx,'on')
+            overlayHandle = imshow(pupilOverlay,'Parent',targetAx);
+            % Set the transparency to zero
+            overlayHandle.AlphaData = completelyTransparent;
+            hold(targetAx,'off')
+        end
+        
+        function updateOverlays(app, newMask, bBox)
+            if ~isempty(newMask)
+                app.gHandles.overlayPupil.AlphaData = newMask;
+            end
+            if ~isempty(bBox)
+                app.gHandles.overlayRectangle.Position = [bBox.x, bBox.y, bBox.width, bBox.Height];
+            end
+        end
+        
+        function mask = label2mask(labelImg)
+            mask = double(labelImg(:,:,1) / 255);
         end
         
     end

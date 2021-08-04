@@ -2,12 +2,6 @@ classdef imageManager
     
     methods (Static)
         
-        function importFrames
-        end
-        
-        
-        
-        
         % Extract frames SMART
         function extractedFrames = extractFrameFromVideo_smart(videoPath, reqFrames)
             
@@ -70,6 +64,8 @@ classdef imageManager
             % Get the output frames
             extractedFrames = movie;
         end
+        
+        
         
         
         

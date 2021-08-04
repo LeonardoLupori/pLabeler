@@ -7,9 +7,6 @@ classdef pLabeler < handle
         projectName = "";
         
         currImgID = 0;
-        currImg = [];
-        currBbox = [];
-        currPupEllipse = [];
         
         xmlStruct = [];
     end
