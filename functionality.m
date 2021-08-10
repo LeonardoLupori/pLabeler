@@ -25,12 +25,15 @@ classdef functionality
             
             % DRAW PUPIL (button)
             gHandles.DrawPupButton.ButtonPushedFcn = {@functionality.DrawPupButtonClbk, app};
-%             gHandles.DrawPupilMenu.MenuSelectedFcn = 
-%             
-%             gHandles.DrawBbButton.ButtonPushedFcn = 
-%             gHandles.DrawBbMenu.MenuSelectedFcn = 
-            
-                        
+            % DRAW PUPIL (menu)
+            gHandles.DrawPupilMenu.MenuSelectedFcn = {@functionality.DrawPupButtonClbk, app};
+            % Delete PUPIL (menu)
+            gHandles.DeletePupilMenu.MenuSelectedFcn = {@functionality.DeletePupButtonClbk , app};
+            % DRAW eye BOUNDING BOX (button)
+            gHandles.DrawBbButton.ButtonPushedFcn = {@functionality.DrawBbButtonClbk, app};
+            % DRAW eye BOUNDING BOX (menu)
+            gHandles.DrawBbMenu.MenuSelectedFcn = {@functionality.DrawBbButtonClbk, app};
+              
             
             % INVERT image
             gHandles.InvertImCheckBox.ValueChangedFcn = {@functionality.InvertImCheckBoxClbk,app};
@@ -255,15 +258,40 @@ classdef functionality
             graphics.updateGraphics(app)
         end
         
-        function DeletePupButtonClbk(src, event)
+        % Delete the PUPIL label of the current image
+        function DeletePupButtonClbk(~, ~, app)
+            imageManager.deletePupilLabel(app)
+            graphics.updateGraphics(app)
         end
         
+        % Draw a PUPIL label
         function DrawPupButtonClbk(~, ~, app)
-            disableDefaultInteractivity(app.gHandles.ax_image)
+            graphics.interactivity(app, false)
+            app.gHandles.overlayPupil.AlphaData(:) = 0;
             app.gHandles.ROI_pupil = drawellipse(app.gHandles.ax_image,'color',[0 1 1]);
         end
         
-        function DrawBbButtonClbk(src, event)
+        % Draw the eye BOUNDING BOX
+        function DrawBbButtonClbk(~, ~, app)
+            graphics.interactivity(app, false)
+            
+            if isempty(app.lastDrawnBbox)
+                app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
+                    'color',[1 0 0]);
+            else
+                sizeCurrentImg = size(app.gHandles.imgHandle.CData);
+                if app.lastDrawnBbox(1) + app.lastDrawnBbox(3) < sizeCurrentImg(2) ||...
+                        app.lastDrawnBbox(2) + app.lastDrawnBbox(4) < sizeCurrentImg(1)
+                    app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
+                        'color',[1 0 0],'Position',app.lastDrawnBbox);
+                else
+                    app.lastDrawnBbox = [];
+                    app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
+                        'color',[1 0 0]);
+                end
+            end
+            
+            
         end
         
         % AUTO-CONTRAST
@@ -365,6 +393,20 @@ classdef functionality
             app.xmlStruct = S;
         end
         
+        % Save the data in the xmlStruct GUI property in the project XML
+        function updateXMLfileFromStruct(app)
+            xmlFullPath = app.projectPath + filesep +  "pLabelerProject.xml";
+            writestruct(app.xmlStruct, xmlFullPath);
+        end
+        
+        function [imageName, imageIndex] = imageID2name(imageID, xmlStruct)  
+            imList = xmlStruct.images.image;
+            % Locate the current image in the XML based on its ID
+            idx = find([imList.id] == imageID);
+            imageIndex = idx;
+            imageName = imList(idx).frameFileName;
+        end
+        
         % Convert strings in logical (e.g., "True" to true)
         function bool = str2logical(str)
             trueList = ["True","true","1"];
@@ -411,28 +453,58 @@ classdef functionality
                     functionality.NextImButtonClbk(src, event, app)
                 case 'e'
                     functionality.DrawPupButtonClbk(src, event, app)
-                % SPACEBAR is generally used to "confirm" temporary
-                % edits that the user might do like drawing a pupil or a
-                % bounding box
+                case 'q'
+                    functionality.DrawBbButtonClbk(src, event, app)
                 case {'space', 'return'}     
+                    % when the user "accepts" a pupil ROI
                     if ishandle(app.gHandles.ROI_pupil)
-                        % Create Mask from the ROI abject
                         mask = createMask(app.gHandles.ROI_pupil, app.gHandles.imgHandle);
-                        mask = mask*0.4;
                         graphics.updateOverlays(app, mask, [])
                         delete(app.gHandles.ROI_pupil)
-                        enableDefaultInteractivity(app.gHandles.ax_image);
-                        axtoolbar(app.gHandles.ax_image,{'pan','zoomin','zoomout','restoreview'});
+                        imageManager.addPupilLabel(app, mask)
                     end
-                case 'escape'
+                    % when the user "accepts" an eye bounding box
+                    if ishandle(app.gHandles.ROI_bBox)
+                        boxStruct = functionality.pos2bBoxStruct(floor(app.gHandles.ROI_bBox.Position));
+                        graphics.updateOverlays(app, [], boxStruct)
+                        delete(app.gHandles.ROI_bBox)
+                        projManager.addBbox(app, boxStruct);
+                    end
+                    graphics.interactivity(app, true)
+                    
+                case {'escape', 'backspace'}
                     if ishandle(app.gHandles.ROI_pupil)
                         delete(app.gHandles.ROI_pupil)
                     end
+                    if ishandle(app.gHandles.ROI_bBox)
+                        delete(app.gHandles.ROI_bBox)
+                    end
+                    graphics.interactivity(app, true)
+                case 'delete'
+                    % implement delete current bbox and pupil
             end
             
             
         end
         
+        % Converts the bounding box struct in a "position" vector (x,y,w,h)
+        function positionVector = bBoxStruct2position(struct)
+            if ~isnumeric(struct.x)
+                positionVector = zeros(4,1);
+            else
+                positionVector = [struct.x,struct.y,struct.height,struct.width];
+            end
+        end
+        
+        % Converts a "position" vector (x,y,w,h) into a bounding box struct
+        function bBoxStruct = pos2bBoxStruct(positionVector)
+            if isempty(positionVector)
+                bBoxStruct = struct('x',NaN,'y',NaN, 'width',NaN, 'height',NaN);
+            else
+                bBoxStruct = struct('x', positionVector(1),'y', positionVector(2),...
+                    'width',positionVector(3),'height',positionVector(4));
+            end
+        end
     end
 end
 

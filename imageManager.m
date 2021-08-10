@@ -65,9 +65,64 @@ classdef imageManager
             extractedFrames = movie;
         end
         
+        % Save a pupil label image and update the XML file
+        function addPupilLabel(app, mask)
+            functionality.updateStructFromFile(app)
+            % Creathe the label image
+            label = zeros([size(app.gHandles.imgHandle.CData),3], 'uint8');
+            label(:,:,1) = uint8(mask*255);
+            
+            % Get info for the current image
+            [imageName, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            % New filename for the .png image
+            [~,labelName,~] = fileparts(imageName);
+            labelName = labelName + ".png";
+            
+            % Write feedback to the Log text area
+            oldLabelName = app.xmlStruct.images.image(imageIndex).labelFileName;
+            if strlength(oldLabelName) == 0
+                msg = sprintf("Saved pupil label: %s",labelName);
+            else
+                msg = sprintf("Updated pupil label: %s",labelName);
+            end
+            
+            % Write the image
+            imwrite(label, app.projectPath + filesep + "labels" + filesep + labelName)
+            % Write the updated XML file
+            app.xmlStruct.images.image(imageIndex).labelFileName = labelName;
+            functionality.updateXMLfileFromStruct(app)
+            
+            
+            functionality.writeToLog(app.gHandles.Log, msg)
+        end
         
-        
-        
+        % Delete the pupil label image and update the XML file
+        function deletePupilLabel(app)
+            functionality.updateStructFromFile(app)
+            
+            % Get info for the current image
+            [imageName, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            % Get the filename for the .png label image
+            [~,labelName,~] = fileparts(imageName);
+            labelName = labelName + ".png";
+            labelFullName = app.projectPath + filesep + "labels" + filesep + labelName;
+            % Delete the .png label image
+            if isfile(labelFullName)
+                delete(labelFullName)
+                msg = sprintf("Deleted pupil label: %s",labelName);
+            else
+                msg = "No label image to delete";
+            end
+            % Remove the image label filename from the XML
+            app.xmlStruct.images.image(imageIndex).labelFileName = "";
+            functionality.updateXMLfileFromStruct(app)
+            
+            % Write feedback to the Log text area
+            functionality.writeToLog(app.gHandles.Log, msg)
+            
+        end
         
     end
     

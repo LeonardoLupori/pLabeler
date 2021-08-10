@@ -9,6 +9,7 @@ classdef pLabeler < handle
         currImgID = 0;
         
         xmlStruct = [];
+        lastDrawnBbox = [];
     end
     
     methods

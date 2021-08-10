@@ -4,7 +4,6 @@ classdef graphics
         function handles = createFigures()
             
             % MAIN FIGURE WINDOW
-            % -------------------------------------------------------------
             screenSize = get(0, 'ScreenSize');
             %width = floor(screenSize(3) * (2/4));
             %heigth = floor(screenSize(4) * (2/4));
@@ -282,28 +281,32 @@ classdef graphics
             processedImg = imadjust(processedImg, imLimits);
         end
         
-        function [img, label, isBlinking, isRejected, imNumber, imName] = getCurrImage(app)
+        function [img, label, isBlinking, isRejected, imNumber, imName, bBox] = getCurrImage(app)
             if app.currImgID == 0
                 msg = "No image selected to display";
                 functionality.writeToLog(app.gHandles.Log, msg)
                 return
             end
             
-            imList = app.xmlStruct.images.image;
-            
             % Locate the current image in the XML based on its ID
-            idx = find([imList.id] == app.currImgID);
-            imNumber = [idx, length(imList)];
-            imName = imList(idx).frameFileName;
+            imList = app.xmlStruct.images.image;
+            [imName, idx] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            imNumber = [idx, length(app.xmlStruct.images.image)];
             
             % Load the frame
-            img = imread(app.projectPath + filesep + "frames" + filesep + imList(idx).frameFileName);
+            img = imread(app.projectPath + filesep + "frames" + filesep + imName);
             % Try to load labels if they exist
             if strlength(imList(idx).labelFileName) == 0
                 label = [];
             else
-                label = imread(app.projectPath + filesep + "labels" + filesep + imList(idx).frameFileName);
+                label = imread(app.projectPath + filesep + "labels" + filesep + imList(idx).labelFileName);
             end
+            
+            % Eye Bounding Box
+            bBox = imList(idx).eyeBbox;
+            
+            % Booleans
             isBlinking = functionality.str2logical(imList(idx).isBlinking);
             isRejected = functionality.str2logical(imList(idx).isRejected);
             
@@ -311,7 +314,7 @@ classdef graphics
         
         function updateGraphics(app)
             % Get the current image along with some metadata
-            [img, label, isBlinking, isRejected, imNumber, imName] = graphics.getCurrImage(app);
+            [img, label, isBlinking, isRejected, imNumber, imName, bBox] = graphics.getCurrImage(app);
             img = graphics.imageProprocess(img, app);
             
             % Check if the new Img has the same resolution as the old one
@@ -323,7 +326,9 @@ classdef graphics
                 app.gHandles.imgHandle.CData = img;
             else
                 app.gHandles.imgHandle = imshow(img,'Parent',app.gHandles.ax_image);
+                graphics.interactivity(app, true)
                 app.gHandles.overlayPupil = graphics.createOverlay(app.gHandles.ax_image, size(img));
+                graphics.createBbox(app)
             end
             
             % Update the pupil area showed
@@ -335,6 +340,9 @@ classdef graphics
             end
             graphics.updateOverlays(app, newMask, [])
             
+            % Update the eye Bounding box showed
+            newRectPos = functionality.bBoxStruct2position(bBox);
+            app.gHandles.overlayRectangle.Position = newRectPos;
             
             % Update the figure title
             figTitle = sprintf("pLabeler - display window - (%u/%u) - %s",...
@@ -378,17 +386,43 @@ classdef graphics
             hold(targetAx,'off')
         end
         
+        function createBbox(app)
+            if ~ishandle(app.gHandles.overlayRectangle)
+                app.gHandles.overlayRectangle = rectangle(app.gHandles.ax_image,...
+                    'Position',[0 0 0 0],'EdgeColor', [1 0 0],...
+                    'LineWidth', 2, 'LineStyle', ':');
+            end
+        end
+        
         function updateOverlays(app, newMask, bBox)
             if ~isempty(newMask)
+                if islogical(newMask)
+                    transparency = 0.4;
+                    newMask = newMask*transparency;
+                end
                 app.gHandles.overlayPupil.AlphaData = newMask;
             end
             if ~isempty(bBox)
-                app.gHandles.overlayRectangle.Position = [bBox.x, bBox.y, bBox.width, bBox.Height];
+                if isstruct(bBox)
+                    app.gHandles.overlayRectangle.Position = [bBox.x, bBox.y, bBox.width, bBox.height];
+                else
+                    app.gHandles.overlayRectangle.Position = bBox;
+                end
+                app.lastDrawnBbox = app.gHandles.overlayRectangle.Position;
             end
         end
         
         function mask = label2mask(labelImg)
             mask = double(labelImg(:,:,1) / 255);
+        end
+        
+        function interactivity(app, state)
+            if state
+                axtoolbar(app.gHandles.ax_image,{'pan','zoomin','zoomout','restoreview'});
+                enableDefaultInteractivity(app.gHandles.ax_image);
+            else
+                disableDefaultInteractivity(app.gHandles.ax_image);
+            end
         end
         
     end

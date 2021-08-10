@@ -112,6 +112,8 @@ classdef projManager
             
         end
         
+        % Update the saved XML with the ID of the current image to restore
+        % it upon closing and reopening the app
         function updateXML_currentImgID(app)
             %Load xml as a struct
             xmlFullPath = app.projectPath + filesep + "pLabelerProject.xml";
@@ -124,9 +126,23 @@ classdef projManager
             
         end
         
+        % Add bounding box info to the XML file
+        function addBbox(app, bBoxStruct)
+            functionality.updateStructFromFile(app)
+            
+            % Get info for the current image
+            [imName, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            app.xmlStruct.images.image(imageIndex).eyeBbox = bBoxStruct;
+            functionality.updateXMLfileFromStruct(app)
+            
+            msg = sprintf("Eye bBox saved: %s",imName);
+            functionality.writeToLog(app.gHandles.Log, msg)
+        end
         
-    end
-    
-    
-    
+        function deleteBbox(app)
+            % TO IMPLEMENT
+        end
+        
+    end 
 end
