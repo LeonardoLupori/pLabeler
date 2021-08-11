@@ -578,8 +578,12 @@ classdef functionality
                     end
                     graphics.interactivity(app, true)
                 case 'delete'
-                    disp('a')
-                    % implement delete current bbox and pupil
+                    if strcmp(modifier, 'shift')
+                        disp('a')
+                        functionality.DeletePupButtonClbk(src, event, app)
+                    else
+                        functionality.DeleteBbMenuClbk(src, event, app)
+                    end
             end
             
             

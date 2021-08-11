@@ -37,7 +37,6 @@ classdef pLabeler < handle
             app.gHandles = graphics.createFigures();
             % Disable all images interactions until a project is loaded
             functionality.enableTool(app, 'noProjectLoaded', 'off')
-            
             % Assign callbacks to all the buttons in the GUI
             functionality.assignCallbacks(app)
             % Add custom CloseRequestFcn to all the figures
