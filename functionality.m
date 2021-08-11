@@ -298,6 +298,9 @@ classdef functionality
         
         % Draw a PUPIL label
         function DrawPupButtonClbk(~, ~, app)
+            if ishandle(app.gHandles.ROI_pupil)
+                return
+            end
             graphics.interactivity(app, false)
             app.gHandles.overlayPupil.AlphaData(:) = 0;
             app.gHandles.ROI_pupil = drawellipse(app.gHandles.ax_image,'color',[0 1 1]);
@@ -305,6 +308,10 @@ classdef functionality
         
         % Draw the eye BOUNDING BOX
         function DrawBbButtonClbk(~, ~, app)
+            if ishandle(app.gHandles.ROI_bBox)
+                return
+            end
+            
             graphics.interactivity(app, false)
             
             if isempty(app.lastDrawnBbox)
@@ -502,7 +509,7 @@ classdef functionality
                         app.gHandles.InvertImCheckBox, app.gHandles.AutoCntrCheckBox,...
                         app.gHandles.AutoCntrSwitch, app.gHandles.WhiteSlider,...
                         app.gHandles.WhiteSliderLabel, app.gHandles.BlackSlider,...
-                        app.gHandles.BlackSliderLabel];
+                        app.gHandles.BlackSliderLabel, app.gHandles.AddImgsMenu];
                 case 'noProjectLoaded'
                     handleList = [app.gHandles.AddImgsMenu, app.gHandles.LabelingMenu,...
                         app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
@@ -579,10 +586,9 @@ classdef functionality
                     graphics.interactivity(app, true)
                 case 'delete'
                     if strcmp(modifier, 'shift')
-                        disp('a')
-                        functionality.DeletePupButtonClbk(src, event, app)
-                    else
                         functionality.DeleteBbMenuClbk(src, event, app)
+                    else
+                        functionality.DeletePupButtonClbk(src, event, app)
                     end
             end
             
