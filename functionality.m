@@ -33,7 +33,14 @@ classdef functionality
             gHandles.DrawBbButton.ButtonPushedFcn = {@functionality.DrawBbButtonClbk, app};
             % DRAW eye BOUNDING BOX (menu)
             gHandles.DrawBbMenu.MenuSelectedFcn = {@functionality.DrawBbButtonClbk, app};
-              
+            % Delete eye Bounding Box (menu)
+            gHandles.DeleteBbMenu.MenuSelectedFcn = {@functionality.DeleteBbMenuClbk, app};
+            % Delete all labels for this image
+            gHandles.DeleteAllMenu.MenuSelectedFcn = {@functionality.DeleteAllMenuClbk, app};
+            % Flag this image as rejected
+            gHandles.RejectMenu.MenuSelectedFcn = {@functionality.RejectMenuClbk, app};
+            % Flag this image as a BLINK
+            gHandles.BlinkingMenu.MenuSelectedFcn = {@functionality.BlinkingMenuClbk, app};
             
             % INVERT image
             gHandles.InvertImCheckBox.ValueChangedFcn = {@functionality.InvertImCheckBoxClbk,app};
@@ -53,8 +60,12 @@ classdef functionality
             
             % Pupillometry
             gHandles.PupillometryMenu.MenuSelectedFcn = {@functionality.PupillometryMenuClbk, app};
+            % Tutorial
+            app.gHandles.TutorialMenu.MenuSelectedFcn = {@functionality.TutorialMenuClbk, app};
             
         end
+        
+        
         %------------------------------------------------------------------
         % CALLBACK FUNCTIONS
         %------------------------------------------------------------------
@@ -70,7 +81,8 @@ classdef functionality
                     projectName;
                 
                 app.xmlStruct = xmlStruct;
-                functionality.enableTool(app,'buttons','on')
+                functionality.enableTool(app,'onlyForAddingImages','on')
+                graphics.updateGraphics(app);
             end
         end
         
@@ -95,9 +107,9 @@ classdef functionality
                 S.projectInfo.projectName;
             app.xmlStruct = S;
             
-            msg = sprintf("Loaded project: '%s'", S.projectInfo.projectName);
+            msg = sprintf("Loaded project: '%s'", string(S.projectInfo.projectName));
             functionality.writeToLog(app.gHandles.Log, msg)
-            functionality.enableTool(app,'buttons','on')
+            functionality.enableTool(app,'all','on')
             
             
             graphics.updateGraphics(app)
@@ -130,6 +142,10 @@ classdef functionality
                 fN = {fN};
             end
             
+            functionality.enableTool(app,'all','off')
+            app.gHandles.fig_image.Pointer = 'watch';
+            app.gHandles.fig_pLabeler.Pointer = 'watch';
+            
             % Add the images one by one
             msg = sprintf("Adding %u images...", length(fN));
             functionality.writeToLog(app.gHandles.Log, msg)
@@ -151,6 +167,12 @@ classdef functionality
             end
             
             functionality.updateStructFromFile(app)
+            functionality.enableTool(app,'all','on')
+            app.gHandles.fig_image.Pointer = 'arrow';
+            app.gHandles.fig_pLabeler.Pointer = 'arrow';
+            
+            graphics.updateGraphics(app)
+            
             msg = sprintf("Successfully added %u images", sum(bool));
             functionality.writeToLog(app.gHandles.Log, msg)
         end
@@ -199,6 +221,10 @@ classdef functionality
                 return
             end
             
+            functionality.enableTool(app,'all','off')
+            app.gHandles.fig_image.Pointer = 'watch';
+            app.gHandles.fig_pLabeler.Pointer = 'watch';
+            
             % Cycle through all the videos
             for i = 1:length(fN)
                 videoPath = [pth filesep fN{i}];
@@ -227,6 +253,12 @@ classdef functionality
             end
             
             functionality.updateStructFromFile(app)
+            functionality.enableTool(app,'all','on')
+            app.gHandles.fig_image.Pointer = 'arrow';
+            app.gHandles.fig_pLabeler.Pointer = 'arrow';
+            
+            graphics.updateGraphics(app)
+            
             functionality.writeToLog(app.gHandles.Log, "Success.")
             
             
@@ -294,6 +326,30 @@ classdef functionality
             
         end
         
+        % Delete the eye BOUNDING BOX
+        function DeleteBbMenuClbk(~, ~, app)
+            projManager.deleteBbox(app)
+            graphics.updateGraphics(app)
+        end
+        
+        % Delete both the eye bounding box and the pupil
+        function DeleteAllMenuClbk(src, event, app)
+            functionality.DeletePupButtonClbk(src, event, app)
+            functionality.DeleteBbMenuClbk(src, event, app)
+        end
+        
+        % Flag this image as rejected
+        function RejectMenuClbk(~, ~, app)
+            projManager.toggleRejectedXML(app)
+            graphics.updateGraphics(app)
+        end
+        
+        % Flag this image as a BLINK
+        function BlinkingMenuClbk(~, ~, app)
+            projManager.toggleBlinkXML(app)
+            graphics.updateGraphics(app)
+        end
+        
         % AUTO-CONTRAST
         function AutoCntrCheckBoxClbk(src, ~, app)
             if src.Value    % If the chackbox was ticked
@@ -339,6 +395,11 @@ classdef functionality
             web('www.pupillometry.it', '-browser')
         end
         
+        % Link to the wiki of the software
+        function TutorialMenuClbk(~, ~, app)
+            functionality.writeToLog(app.gHandles.Log, "Link to pLabeler Wiki")
+            web('https://github.com/LeonardoLupori/pLabeler/wiki', '-browser')
+        end
         
         %------------------------------------------------------------------
         % ADDITIONAL FUNCTIONS
@@ -399,6 +460,8 @@ classdef functionality
             writestruct(app.xmlStruct, xmlFullPath);
         end
         
+        % Get the image name and the index in the images XML struct of an
+        % image from its ID
         function [imageName, imageIndex] = imageID2name(imageID, xmlStruct)  
             imList = xmlStruct.images.image;
             % Locate the current image in the XML based on its ID
@@ -408,17 +471,17 @@ classdef functionality
         end
         
         % Convert strings in logical (e.g., "True" to true)
-        function bool = str2logical(str)
-            trueList = ["True","true","1"];
-            falseList = ["False","false","0"];
-            if ismember(str,trueList)
-                bool = true;
-            elseif ismember(str,falseList)
-                bool = false;
-            else
-                error("Unrecognized string")
-            end
-        end
+%         function bool = str2logical(str)
+%             trueList = ["True","true","1"];
+%             falseList = ["False","false","0"];
+%             if ismember(str,trueList)
+%                 bool = true;
+%             elseif ismember(str,falseList)
+%                 bool = false;
+%             else
+%                 error("Unrecognized string")
+%             end
+%         end
         
         % Enable or disable groups of UI elements
         function enableTool(app, handleSubset, state)
@@ -432,6 +495,25 @@ classdef functionality
                 case 'autoContrastMethod'
                     handleList = app.gHandles.AutoCntrSwitch;
                 case 'all'
+                    handleList = [app.gHandles.FileMenu, app.gHandles.LabelingMenu,...
+                        app.gHandles.HelpMenu,...
+                        app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
+                        app.gHandles.PrevImButton, app.gHandles.NextImButton,...
+                        app.gHandles.InvertImCheckBox, app.gHandles.AutoCntrCheckBox,...
+                        app.gHandles.AutoCntrSwitch, app.gHandles.WhiteSlider,...
+                        app.gHandles.WhiteSliderLabel, app.gHandles.BlackSlider,...
+                        app.gHandles.BlackSliderLabel];
+                case 'noProjectLoaded'
+                    handleList = [app.gHandles.AddImgsMenu, app.gHandles.LabelingMenu,...
+                        app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
+                        app.gHandles.PrevImButton, app.gHandles.NextImButton,...
+                        app.gHandles.InvertImCheckBox, app.gHandles.AutoCntrCheckBox,...
+                        app.gHandles.AutoCntrSwitch, app.gHandles.WhiteSlider,...
+                        app.gHandles.WhiteSliderLabel, app.gHandles.BlackSlider,...
+                        app.gHandles.BlackSliderLabel];
+                case 'onlyForAddingImages'
+                    handleList = [app.gHandles.NewProjectMenu, app.gHandles.LoadProjectMenu,...
+                        app.gHandles.AddImgsMenu];
             end
             
             % Enable or disable all the elements of the handle subset
@@ -442,6 +524,17 @@ classdef functionality
         
         % Parse key press to execute functions
         function keyParser(src,event,app)
+            
+            % Prevent keyboards interactions if any of this conditions is
+            % met
+            conditionsForSkipping = ...
+                strlength(app.projectName) == 0 ||...   % No project was loaded
+                ~isfield(app.xmlStruct,'images') ||...    % No images field in the XML
+                ~isfield(app.xmlStruct.images,'image');
+            if conditionsForSkipping
+                return
+            end
+            
             
             key = event.Key;
             modifier = event.Modifier;
@@ -455,6 +548,10 @@ classdef functionality
                     functionality.DrawPupButtonClbk(src, event, app)
                 case 'q'
                     functionality.DrawBbButtonClbk(src, event, app)
+                case 'b'
+                    functionality.BlinkingMenuClbk(src, event, app)
+                case 'x'
+                    functionality.RejectMenuClbk(src, event, app)
                 case {'space', 'return'}     
                     % when the user "accepts" a pupil ROI
                     if ishandle(app.gHandles.ROI_pupil)
@@ -481,6 +578,7 @@ classdef functionality
                     end
                     graphics.interactivity(app, true)
                 case 'delete'
+                    disp('a')
                     % implement delete current bbox and pupil
             end
             
@@ -489,10 +587,10 @@ classdef functionality
         
         % Converts the bounding box struct in a "position" vector (x,y,w,h)
         function positionVector = bBoxStruct2position(struct)
-            if ~isnumeric(struct.x)
+            if ~isnumeric(struct.x) || isnan(struct.x)
                 positionVector = zeros(4,1);
             else
-                positionVector = [struct.x,struct.y,struct.height,struct.width];
+                positionVector = [struct.x,struct.y,struct.width,struct.height];
             end
         end
         

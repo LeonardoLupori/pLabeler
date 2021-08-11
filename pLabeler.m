@@ -35,6 +35,9 @@ classdef pLabeler < handle
         function buildApp(app)
             % Create all the graphics elements in the 2 figures
             app.gHandles = graphics.createFigures();
+            % Disable all images interactions until a project is loaded
+            functionality.enableTool(app, 'noProjectLoaded', 'off')
+            
             % Assign callbacks to all the buttons in the GUI
             functionality.assignCallbacks(app)
             % Add custom CloseRequestFcn to all the figures
@@ -43,9 +46,10 @@ classdef pLabeler < handle
         end
         
         function closeFunction(app,~,~)
-            % Store the currentImgID in the XML file
-            projManager.updateXML_currentImgID(app)
-            
+            % Store the currentImgID in the XML file if a project is loaded
+            if strlength(app.projectName) ~= 0
+                projManager.updateXML_currentImgID(app)
+            end
             delete(app.gHandles.fig_image)
             delete(app.gHandles.fig_pLabeler)
         end

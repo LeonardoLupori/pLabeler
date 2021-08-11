@@ -108,25 +108,35 @@ classdef graphics
 
             % Create DrawBbMenu
             handles.DrawBbMenu = uimenu(handles.LabelingMenu);
-            handles.DrawBbMenu.Text = 'Draw Eye bounding-box';
+            handles.DrawBbMenu.Text = 'Draw Eye bounding-box  (Q)';
 
             % Create DeleteBbMenu
             handles.DeleteBbMenu = uimenu(handles.LabelingMenu);
-            handles.DeleteBbMenu.Text = 'Delete Eye bounding-box';
+            handles.DeleteBbMenu.Text = 'Delete Eye bounding-box  (shift+del)';
 
             % Create DrawPupilMenu
             handles.DrawPupilMenu = uimenu(handles.LabelingMenu);
             handles.DrawPupilMenu.Separator = 'on';
-            handles.DrawPupilMenu.Text = 'Draw Pupil';
+            handles.DrawPupilMenu.Text = 'Draw Pupil  (E)';
 
             % Create DeletePupilMenu
             handles.DeletePupilMenu = uimenu(handles.LabelingMenu);
-            handles.DeletePupilMenu.Text = 'Delete Pupil';
+            handles.DeletePupilMenu.Text = 'Delete Pupil  (del)';
 
             % Create DeleteAllMenu
             handles.DeleteAllMenu = uimenu(handles.LabelingMenu);
             handles.DeleteAllMenu.Separator = 'on';
-            handles.DeleteAllMenu.Text = 'Delete all labels';
+            handles.DeleteAllMenu.Text = 'Clear Labels';
+            
+            % Create BlinkingMenu
+            handles.BlinkingMenu = uimenu(handles.LabelingMenu);
+            handles.BlinkingMenu.Separator = 'on';
+            handles.BlinkingMenu.Text = 'Flag as blink  (B)';
+            
+            % Create RejectMenu
+            handles.RejectMenu = uimenu(handles.LabelingMenu);
+            handles.RejectMenu.Separator = 'on';
+            handles.RejectMenu.Text = 'Flag as rejected  (X)';
 
             % Create HelpMenu
             handles.HelpMenu = uimenu(handles.fig_pLabeler);
@@ -150,6 +160,7 @@ classdef graphics
             handles.Log = uitextarea(handles.fig_pLabeler);
             handles.Log.BackgroundColor = [0.9412 0.9412 0.9412];
             handles.Log.Position = [11 41 330 170];
+            handles.Log.Editable = 'off';
 
             % Create CurrentProjectLabel
             handles.CurrentProjectLabel = uilabel(handles.fig_pLabeler);
@@ -269,8 +280,8 @@ classdef graphics
                 if strcmpi(app.gHandles.AutoCntrSwitch.Value, 'min/max')
                     imLimits = [min(inputImage(:)), max(inputImage(:))];
                 elseif strcmpi(app.gHandles.AutoCntrSwitch.Value, 'best fit')
-                    imLimits = [quantile(inputImage(:), .01),...
-                        quantile(inputImage(:), .99)];
+                    imLimits = [quantile(inputImage(:), .02),...
+                        quantile(inputImage(:), .98)];
                 end
                 imLimits = imLimits./ 255;
             else
@@ -307,15 +318,25 @@ classdef graphics
             bBox = imList(idx).eyeBbox;
             
             % Booleans
-            isBlinking = functionality.str2logical(imList(idx).isBlinking);
-            isRejected = functionality.str2logical(imList(idx).isRejected);
+            isBlinking = imList(idx).isBlinking;
+            isRejected = imList(idx).isRejected;
             
         end
         
         function updateGraphics(app)
-            % Get the current image along with some metadata
-            [img, label, isBlinking, isRejected, imNumber, imName, bBox] = graphics.getCurrImage(app);
-            img = graphics.imageProprocess(img, app);
+            if ~isfield(app.xmlStruct,'images')
+                img = imread('media/pLabelerWelcome.png');
+                label = [];
+                isBlinking = 0;
+                isRejected = 0;
+                imNumber = [1, 1]; 
+                imName = "Welcome"; 
+                bBox = struct('x',0,'y',0,'width',0,'height',0);
+            else
+                % Get the current image along with some metadata
+                [img, label, isBlinking, isRejected, imNumber, imName, bBox] = graphics.getCurrImage(app);
+                img = graphics.imageProprocess(img, app);
+            end
             
             % Check if the new Img has the same resolution as the old one
             % and update the Image showed
@@ -360,13 +381,13 @@ classdef graphics
             
             % Draw new blinking and rejected text objects if appropiate
             if isBlinking
-                app.gHandles.blinkHandle = text(5,20,'Blink','FontSize',25,...
+                app.gHandles.blinkHandle = text(5,30,'Blink','FontSize',40,...
                     'Color',[.39, .83 .07],'FontWeight','bold');
             end
             if isRejected
-                x = round(size(img,2)/2) - 80;
+                x = round(size(img,2)/2) - 100;
                 y = round(size(img,1)/2);
-                app.gHandles.rejectHandle = text(x,y,'Rejected','FontSize',30,...
+                app.gHandles.rejectHandle = text(x,y,'Rejected','FontSize',40,...
                     'Color',[.9, 0 0],'FontWeight','bold');
             end
             

@@ -87,9 +87,9 @@ classdef projManager
                 S.images.image.eyeBbox.y = NaN;
                 S.images.image.eyeBbox.width = NaN;
                 S.images.image.eyeBbox.height = NaN;
-                S.images.image.isEye = true;
-                S.images.image.isBlinking = false;
-                S.images.image.isRejected = false;
+                S.images.image.isEye = 1;
+                S.images.image.isBlinking = 0;
+                S.images.image.isRejected = 0;
             else
                 % Otherwise create a newImage struct
                 newImage.id = newImgID;
@@ -99,9 +99,9 @@ classdef projManager
                 newImage.eyeBbox.y = NaN;
                 newImage.eyeBbox.width = NaN;
                 newImage.eyeBbox.height = NaN;
-                newImage.isEye = true;
-                newImage.isBlinking = false;
-                newImage.isRejected = false;
+                newImage.isEye = 1;
+                newImage.isBlinking = 0;
+                newImage.isRejected = 0;
                 % Concatenate the struct to the existing list
                 S.images.image = cat(2, S.images.image, newImage);
             end
@@ -140,9 +140,62 @@ classdef projManager
             functionality.writeToLog(app.gHandles.Log, msg)
         end
         
+        % Delete bounding box info from the XML file
         function deleteBbox(app)
-            % TO IMPLEMENT
+            functionality.updateStructFromFile(app)
+            % Get info for the current image
+            [imName, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            % Seth the bbox info as NaN
+            emptyStruct = functionality.pos2bBoxStruct([NaN, NaN, NaN, NaN]);
+            app.xmlStruct.images.image(imageIndex).eyeBbox = emptyStruct;
+            % Save back the struct in the XML file
+            functionality.updateXMLfileFromStruct(app)
+            
+            msg = sprintf("Eye bBox deleted: %s",imName);
+            functionality.writeToLog(app.gHandles.Log, msg)
         end
+        
+        % Toggle (true/false) the state of the isBlinking field in the XML
+        % for the current image
+        function toggleBlinkXML(app)
+            functionality.updateStructFromFile(app)
+            % Get info for the current image
+            [~, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            oldStatus = app.xmlStruct.images.image(imageIndex).isBlinking;
+            newStatus = double(~oldStatus);
+            app.xmlStruct.images.image(imageIndex).isBlinking = newStatus;
+            % Save back the struct in the XML file
+            functionality.updateXMLfileFromStruct(app)
+            if newStatus
+                msg = "Blink";
+            else
+                msg = "Not a blink";
+            end
+            functionality.writeToLog(app.gHandles.Log, msg)
+        end
+        
+        % Toggle (true/false) the state of the isRejected field in the XML
+        % for the current image
+        function toggleRejectedXML(app)
+            functionality.updateStructFromFile(app)
+            % Get info for the current image
+            [~, imageIndex] = functionality.imageID2name(app.currImgID,...
+                app.xmlStruct);
+            oldStatus = app.xmlStruct.images.image(imageIndex).isRejected;
+            newStatus = double(~oldStatus);
+            app.xmlStruct.images.image(imageIndex).isRejected = newStatus;
+            % Save back the struct in the XML file
+            functionality.updateXMLfileFromStruct(app)
+            if newStatus
+                msg = "Rejected";
+            else
+                msg = "Accepted";
+            end
+            functionality.writeToLog(app.gHandles.Log, msg)
+        end
+        
         
     end 
 end
