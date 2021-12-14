@@ -278,10 +278,10 @@ classdef graphics
             if autoContrast
                 % Get the contrast limits based on the selected method
                 if strcmpi(app.gHandles.AutoCntrSwitch.Value, 'min/max')
-                    imLimits = [min(inputImage(:)), max(inputImage(:))];
+                    imLimits = [min(processedImg(:)), max(processedImg(:))];
                 elseif strcmpi(app.gHandles.AutoCntrSwitch.Value, 'best fit')
-                    imLimits = [quantile(inputImage(:), .02),...
-                        quantile(inputImage(:), .98)];
+                    imLimits = [quantile(processedImg(:), .02),...
+                        quantile(processedImg(:), .98)];
                 end
                 imLimits = double(imLimits)./ 255;
             else
