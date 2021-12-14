@@ -13,6 +13,8 @@ The software have been tested on:
 - MATLAB 2021a
 - MATLAB 2021b
 
+The Image Processing Toolbox is required
+
 ## Installation
 1. **Download the software**  
 You can download the software: 
