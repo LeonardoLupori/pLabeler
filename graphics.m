@@ -283,7 +283,7 @@ classdef graphics
                     imLimits = [quantile(inputImage(:), .02),...
                         quantile(inputImage(:), .98)];
                 end
-                imLimits = imLimits./ 255;
+                imLimits = double(imLimits)./ 255;
             else
                 imLimits = [app.gHandles.BlackSlider.Value,...
                     app.gHandles.WhiteSlider.Value];
