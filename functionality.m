@@ -417,17 +417,17 @@ classdef functionality
             
             if isempty(app.lastDrawnBbox)
                 app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
-                    'color',[1 0 0]);
+                    'color',[1 0 0],'AspectRatio',1);
             else
                 sizeCurrentImg = size(app.gHandles.imgHandle.CData);
                 if app.lastDrawnBbox(1) + app.lastDrawnBbox(3) < sizeCurrentImg(2) ||...
                         app.lastDrawnBbox(2) + app.lastDrawnBbox(4) < sizeCurrentImg(1)
                     app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
-                        'color',[1 0 0],'Position',app.lastDrawnBbox);
+                        'color',[1 0 0],'Position',app.lastDrawnBbox,'AspectRatio',1);
                 else
                     app.lastDrawnBbox = [];
                     app.gHandles.ROI_bBox = drawrectangle(app.gHandles.ax_image,...
-                        'color',[1 0 0]);
+                        'color',[1 0 0],'AspectRatio',1);
                 end
             end
             
