@@ -540,7 +540,8 @@ classdef functionality
             
             % Create a filename for the new image
             newImgID = S.projectInfo.lastImageID + 1;
-            newImgFileName = sprintf("%05u" + "_frame_" + projectName + ".jpg", newImgID);
+%             newImgFileName = sprintf("%05u" + "_frame_" + projectName + ".jpg", newImgID);
+            newImgFileName = sprintf("%05u" + "_frame_" + projectName + ".png", newImgID);
             
             % Write the image in the "frames" folder
             imwrite(img, projectPath + filesep + "frames" + filesep + newImgFileName)
