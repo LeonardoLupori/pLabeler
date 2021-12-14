@@ -100,7 +100,7 @@ classdef graphics
             handles.ExportLabelsMenu = uimenu(handles.FileMenu);
             handles.ExportLabelsMenu.Separator = 'on';
             handles.ExportLabelsMenu.Text = 'Export Labeled Images';
-            handles.ExportLabelsMenu.Enable = 'off';
+            handles.ExportLabelsMenu.Enable = 'on';
 
             % Create LabelingMenu
             handles.LabelingMenu = uimenu(handles.fig_pLabeler);

@@ -21,6 +21,8 @@ classdef functionality
             gHandles.SmartMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
             % Add frames from Video (RANDOM)
             gHandles.RandomMenu.MenuSelectedFcn = {@functionality.FromVideoMenuClbk, app};
+            % EXPORT labeled images
+            gHandles.ExportLabelsMenu.MenuSelectedFcn = {@functionality.exportLabeledImagesClbk, app};
             
             
             % DRAW PUPIL (button)
@@ -260,6 +262,64 @@ classdef functionality
             graphics.updateGraphics(app)
             
             functionality.writeToLog(app.gHandles.Log, "Success.")
+            
+            
+        end
+        
+        % EXPORT LABELED IMAGES
+        function exportLabeledImagesClbk(~,~,app)
+            print('ciao')
+            
+            % Create a new folder tree for this exported dataset
+            timeStr = datestr(now, "YYYYmmDD_hhMMss_");
+            foldName = string(timeStr) + "exportedDataset";
+            
+            fullFramesFold = app.projectPath + foldName + filesep + "fullFrames" + filesep;
+            annotFold = app.projectPath + foldName + filesep + "annotation" + filesep;
+            pngFold = annotFold + "png" + filesep;
+            
+            mkdir(app.projectPath + foldName + filesep)
+            mkdir(fullFramesFold)
+            mkdir(annotFold)
+            mkdir(pngFold)
+            
+            % Create an empty struct with images info
+            S = struct('filename',[],...
+                'eye',[],...
+                'blink',[],...
+                'exp',[],...
+                'w',[],...
+                'h',[],...
+                'roi_x',[],...
+                'roi_y',[],...
+                'roi_w',[],...
+                'sub',[]);
+            
+            % Struct with all the images in the dataset
+            imgStruct = app.xmlStruct.images.image;
+            
+            for i = 1:size(imgStruct,2)
+                % Skip if the image has no label
+                if imgStruct(i).labelFileName == ""
+                    continue
+                end
+                % Skip if the image has no eye b-box
+                if isstring(imgStruct(i).eyeBbox.x) && imgStruct(i).eyeBbox.x == ""
+                    continue
+                end
+                % Skip if the image is rejected
+                if imgStruct(i).isRejected
+                    continue
+                end
+                
+                
+                
+                
+                
+                
+                
+            end
+            
             
             
         end
@@ -509,7 +569,8 @@ classdef functionality
                         app.gHandles.InvertImCheckBox, app.gHandles.AutoCntrCheckBox,...
                         app.gHandles.AutoCntrSwitch, app.gHandles.WhiteSlider,...
                         app.gHandles.WhiteSliderLabel, app.gHandles.BlackSlider,...
-                        app.gHandles.BlackSliderLabel, app.gHandles.AddImgsMenu];
+                        app.gHandles.BlackSliderLabel, app.gHandles.AddImgsMenu,...
+                        app.gHandles.ExportLabelsMenu];
                 case 'noProjectLoaded'
                     handleList = [app.gHandles.AddImgsMenu, app.gHandles.LabelingMenu,...
                         app.gHandles.DrawPupButton, app.gHandles.DrawBbButton,...
