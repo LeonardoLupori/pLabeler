@@ -11,6 +11,7 @@ For this we need also *your* help!
 ## Requisites
 The software have been tested on: 
 - MATLAB 2021a
+- MATLAB 2021b
 
 ## Installation
 1. **Download the software**  
