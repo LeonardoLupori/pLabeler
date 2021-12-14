@@ -268,21 +268,25 @@ classdef functionality
         
         % EXPORT LABELED IMAGES
         function exportLabeledImagesClbk(~,~,app)
-            print('ciao')
-            
+            msg = "Exporting this labeled Dataset...";
+            functionality.writeToLog(app.gHandles.Log, msg)
+
             % Create a new folder tree for this exported dataset
-            timeStr = datestr(now, "YYYYmmDD_hhMMss_");
-            foldName = string(timeStr) + "exportedDataset";
+            timeStr = datestr(now, "YYYYmmDD_hhMMss");
+            foldName = string(timeStr) + "_exportedDataset";
             
-            fullFramesFold = app.projectPath + foldName + filesep + "fullFrames" + filesep;
-            annotFold = app.projectPath + foldName + filesep + "annotation" + filesep;
+            fullFramesFold = app.projectPath + filesep + foldName + filesep + "fullFrames" + filesep;
+            annotFold = app.projectPath + filesep + foldName + filesep + "annotation" + filesep;
             pngFold = annotFold + "png" + filesep;
             
-            mkdir(app.projectPath + foldName + filesep)
+            mkdir(app.projectPath + filesep + foldName + filesep)
             mkdir(fullFramesFold)
             mkdir(annotFold)
             mkdir(pngFold)
             
+            msg = "Created export folder:\n\t" + foldName;
+            functionality.writeToLog(app.gHandles.Log, msg)
+
             % Create an empty struct with images info
             S = struct('filename',[],...
                 'eye',[],...
@@ -297,30 +301,67 @@ classdef functionality
             
             % Struct with all the images in the dataset
             imgStruct = app.xmlStruct.images.image;
-            
+
+            totalImages = size(imgStruct,2);
+            skippedImages = 0;
+            exportedImages = 0;
+
+            count = 1;
             for i = 1:size(imgStruct,2)
                 % Skip if the image has no label
                 if imgStruct(i).labelFileName == ""
+                    skippedImages = skippedImages + 1;
                     continue
                 end
                 % Skip if the image has no eye b-box
                 if isstring(imgStruct(i).eyeBbox.x) && imgStruct(i).eyeBbox.x == ""
+                    skippedImages = skippedImages + 1;
                     continue
                 end
                 % Skip if the image is rejected
                 if imgStruct(i).isRejected
+                    skippedImages = skippedImages + 1;
                     continue
                 end
                 
+                % Determine the correct resize factor
+                biggestEyeSize = max(imgStruct(i).eyeBbox.width, imgStruct(i).eyeBbox.height);
+                resizeFactor = 128 / biggestEyeSize;
                 
+                % Load, resize and export the image
+                img = imread(app.projectPath + filesep + "frames" + filesep + imgStruct(i).frameFileName);
+                imgOut = imresize(img, resizeFactor);
+                imwrite(imgOut, fullFramesFold + imgStruct(i).frameFileName)
+                % Load, resize and export the label
+                mask = imread(app.projectPath + filesep + "labels" + filesep + imgStruct(i).labelFileName);
+                maskOut = imresize(mask, resizeFactor, 'nearest');
+                imwrite(maskOut, pngFold + imgStruct(i).labelFileName)
+
+                S(count).filename = imgStruct(i).frameFileName;
+                S(count).eye = 1;
+                S(count).blink = imgStruct(i).isBlinking;
+                S(count).exp = 'pLabeler';
+                S(count).w = size(imgOut,2);
+                S(count).h = size(imgOut,1);
+                S(count).roi_x = round(imgStruct(i).eyeBbox.x * resizeFactor);
+                S(count).roi_y = round(imgStruct(i).eyeBbox.y * resizeFactor);
+                S(count).roi_w = 128;
+                S(count).sub = timeStr;
                 
-                
-                
-                
-                
+                exportedImages = exportedImages + 1;
+                count = count+1;
             end
             
+            % Save the annotations CSV file
+            T = struct2table(S);
+            writetable(T,annotFold + "annotations.csv")
             
+            msg = "Dataset exported!";
+            functionality.writeToLog(app.gHandles.Log, msg)
+
+            msg = sprintf('Total: %u images.\n\t- %u Exported Images\n\t- %u Skipped Images',...
+                totalImages, exportedImages, skippedImages);
+            functionality.writeToLog(app.gHandles.Log, msg)
             
         end
         
