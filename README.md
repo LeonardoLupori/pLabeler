@@ -43,4 +43,4 @@ To run the application, type in the command window:
 
     pLabeler;
 
-A detailed user guide on how the software works and how to use it can be found in the pLabeler wiki (TODO)
+A detailed user guide on how the software works and how to use it can be found in the [pLabeler wiki](https://github.com/LeonardoLupori/pLabeler/wiki)
