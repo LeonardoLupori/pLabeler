@@ -5,6 +5,8 @@
 
 > ### Check out [pupillometry.it](https://www.pupillometry.it) for a ready-to-use web-based mEye pupillometry tool!  
 
+> ### For training your own model checkout the original [MEYE repo](https://github.com/fabiocarrara/meye/)
+
 ![pupil](https://user-images.githubusercontent.com/39329654/147874854-8dddfa88-562d-4a03-85f8-68702507153a.gif)
 
 *pLabebeler* is a tool designed to ease the process of labeling pupil images in order to train a convolutional neural network for pupil segmentation [MEYE](https://github.com/fabiocarrara/meye).  
