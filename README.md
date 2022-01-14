@@ -5,7 +5,7 @@
 
 > ### Check out [pupillometry.it](https://www.pupillometry.it) for a ready-to-use web-based mEye pupillometry tool!  
 
-> ### For training your own model checkout the original [MEYE repo](https://github.com/fabiocarrara/meye/)
+> ### To train your own model check out the original [MEYE repo](https://github.com/fabiocarrara/meye/)
 
 ![pupil](https://user-images.githubusercontent.com/39329654/147874854-8dddfa88-562d-4a03-85f8-68702507153a.gif)
 
