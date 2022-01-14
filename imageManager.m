@@ -32,11 +32,11 @@ classdef imageManager
             % We draw requested frames from evenly spaced quantiles of the
             % distribution of the first PC in order to draw frames that are
             % as different as possible
-            quantiles = quantile(pc1, reqFrames);
+            quantiles = quantile(pc1, linspace(0,1,reqFrames));
             
             % Find the index of the frame closest to each quantile            
             temp = repmat(pc1, 1, reqFrames);
-            diffs = abs(temp-quantiles);
+            diffs = abs(temp-quantiles');
             [~, selectedFramesIdx] = min(diffs,[],1);
             
             % Get the output frames
