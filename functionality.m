@@ -258,6 +258,7 @@ classdef functionality
             functionality.enableTool(app,'all','on')
             app.gHandles.fig_image.Pointer = 'arrow';
             app.gHandles.fig_pLabeler.Pointer = 'arrow';
+            app.defPath = string(pth);
             
             graphics.updateGraphics(app)
             
