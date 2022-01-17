@@ -7,9 +7,10 @@ classdef imageManager
             
             v = VideoReader(videoPath);
 
-            % Choose randomly 10 times more frames than requested
-            putativeFramesNumber = min(reqFrames*10, v.NumFrames);
-            framesIdx = randperm(v.NumFrames, reqFrames*10);
+            % Choose randomly X times more frames than requested
+            multiplier = 50;
+            putativeFramesNumber = min(reqFrames*multiplier, v.NumFrames);
+            framesIdx = randperm(v.NumFrames, reqFrames*multiplier);
             framesIdx = sort(framesIdx, 'ascend');
             % Load those frames
             movie = zeros(v.Height, v.Width, putativeFramesNumber, 'uint8');
