@@ -309,8 +309,15 @@ classdef functionality
 
             count = 1;
             for i = 1:size(imgStruct,2)
+                
+                % Progress status in the log
+                if mod(i,100) == 0 || i == size(imgStruct,2)
+                    msg = sprintf("Processing Image (%u/%u)...",i,size(imgStruct,2));
+                    functionality.writeToLog(app.gHandles.Log, msg)
+                end
+                
                 % Skip if the image has no label
-                if imgStruct(i).labelFileName == ""
+                if (imgStruct(i).labelFileName == "") && (imgStruct(i).isBlinking == false)
                     skippedImages = skippedImages + 1;
                     continue
                 end
@@ -334,9 +341,13 @@ classdef functionality
                 imgOut = imresize(img, resizeFactor);
                 imwrite(imgOut, fullFramesFold + imgStruct(i).frameFileName)
                 % Load, resize and export the label
-                mask = imread(app.projectPath + filesep + "labels" + filesep + imgStruct(i).labelFileName);
+                if imgStruct(i).labelFileName == ""
+                    mask = zeros(size(img,1),size(img,2),3,'uint8');
+                else
+                    mask = imread(app.projectPath + filesep + "labels" + filesep + imgStruct(i).labelFileName);
+                end
                 maskOut = imresize(mask, resizeFactor, 'nearest');
-                imwrite(maskOut, pngFold + imgStruct(i).labelFileName)
+                imwrite(maskOut, pngFold + imgStruct(i).frameFileName)
 
                 S(count).filename = imgStruct(i).frameFileName;
                 S(count).eye = 1;
