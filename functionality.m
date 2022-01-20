@@ -408,6 +408,16 @@ classdef functionality
             app.gHandles.ROI_pupil = drawellipse(app.gHandles.ax_image,'color',[0 1 1]);
         end
         
+        % Draw a PUPIL FREEHAND label
+        function DrawPupFreeHandButtonClbk(~, ~, app)
+            if ishandle(app.gHandles.ROI_pupil)
+                return
+            end
+            graphics.interactivity(app, false)
+            app.gHandles.overlayPupil.AlphaData(:) = 0;
+            app.gHandles.ROI_pupil = drawfreehand(app.gHandles.ax_image,'color',[0 1 1]);
+        end
+        
         % Draw the eye BOUNDING BOX
         function DrawBbButtonClbk(~, ~, app)
             if ishandle(app.gHandles.ROI_bBox)
@@ -657,7 +667,11 @@ classdef functionality
                 case 'd'
                     functionality.NextImButtonClbk(src, event, app)
                 case 'e'
-                    functionality.DrawPupButtonClbk(src, event, app)
+                    if strcmp(modifier, 'shift')
+                        functionality.DrawPupFreeHandButtonClbk(src, event, app)
+                    else
+                        functionality.DrawPupButtonClbk(src, event, app)
+                    end
                 case 'q'
                     functionality.DrawBbButtonClbk(src, event, app)
                 case 'b'
